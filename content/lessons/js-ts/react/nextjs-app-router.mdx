@@ -1,0 +1,148 @@
+---
+title: "Next.js App Router fundamentals"
+slug: nextjs-app-router
+kind: lesson
+track: js-ts
+module: react
+order: 5
+difficulty: intermediate
+prerequisites:
+  - react-rendering
+tags:
+  - nextjs
+  - rsc
+  - caching
+estimatedMinutes: 18
+lastReviewed: "2026-11-01"
+summary: "App Router maps folders to routes, runs Server Components by default, and layers fetch cache plus static and dynamic rendering choices you must align with product needs."
+related:
+  - node-streams
+---
+
+## Why this matters
+
+Teams migrating from Pages Router hit surprises: client hooks in a Server Component file, data that never refreshes because a route was statically cached, or waterfalls from nested async server trees. Next.js 15 and 16 refine **cache defaults** and `fetch` caching—confusing if you do not know what runs on the server versus the browser.
+
+App Router is not "React with folders"; it is a **split runtime** with explicit `"use client"` boundaries.
+
+## Mental model
+
+**File-system routing**: `app/dashboard/page.tsx` is the `/dashboard` UI; `layout.tsx` wraps nested segments and can load data once for children.
+
+**React Server Components (RSC)** execute on the server (or at build). They may `await fetch` and read secrets; they do not use `useState` or browser APIs. **Client Components** hydrate interactivity—mark them with `"use client"` at the top of the file.
+
+**Caching (conceptual)**:
+
+- **Static**: prerendered HTML/RSC payload when possible.
+- **Dynamic**: opt in when you need per-request personalization (`cookies()`, `headers()`, `searchParams`, or `export const dynamic = 'force-dynamic'`).
+- **Data cache**: `fetch` requests can be cached or revalidated (`next: { revalidate: 60 }` or tags in newer versions); uncached fetches participate in per-request rendering.
+
+Think: server tree assembles UI and streams HTML; client islands hydrate where needed.
+
+## Code
+
+```ts
+// app/products/page.tsx — Server Component (default)
+type Product = { id: string; name: string; price: number };
+
+async function getProducts(): Promise<Product[]> {
+  const res = await fetch("https://api.example.com/products", {
+    next: { revalidate: 120 },
+  });
+  if (!res.ok) {
+    throw new Error("Failed to load products");
+  }
+  return res.json() as Promise<Product[]>;
+}
+
+export default async function ProductsPage() {
+  const products = await getProducts();
+  return (
+    <main>
+      <h1>Products</h1>
+      <ul>
+        {products.map((p) => (
+          <li key={p.id}>
+            {p.name} — ${p.price}
+          </li>
+        ))}
+      </ul>
+    </main>
+  );
+}
+```
+
+```ts
+"use client";
+
+import { useState, type ReactNode } from "react";
+
+export function AddToCartButton(props: { productId: string }): ReactNode {
+  const [pending, setPending] = useState(false);
+
+  async function onClick(): Promise<void> {
+    setPending(true);
+    try {
+      await fetch("/api/cart", {
+        method: "POST",
+        body: JSON.stringify({ id: props.productId }),
+        headers: { "Content-Type": "application/json" },
+      });
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <button type="button" onClick={onClick} disabled={pending}>
+      {pending ? "Adding…" : "Add to cart"}
+    </button>
+  );
+}
+```
+
+Server page fetches with time-based revalidation; client button owns interaction. Split keeps secrets and heavy data on the server while UI stays responsive.
+
+## Common mistakes
+
+- Importing client-only hooks into Server Components without a `"use client"` leaf.
+- Expecting `fetch` to always hit the network (cached responses surprise local debugging).
+- Giant client bundles because entire subtrees were marked client unnecessarily.
+- Ignoring loading and error UI (`loading.tsx`, `error.tsx`) and blocking navigation.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "Which typically belongs in a Server Component?",
+      choices: [
+        "useState for form input",
+        "await fetch to a database-backed API without exposing tokens",
+        "window.localStorage reads",
+        "onClick handlers"
+      ],
+      answer: 1,
+      explanation: "Server Components can await data fetching on the server; hooks and browser APIs require a Client Component."
+    },
+    {
+      prompt: "What does `next: { revalidate: 120 }` on fetch express?",
+      choices: [
+        "The route must be fully static at build only",
+        "Cached data may be served and refreshed in the background after 120 seconds",
+        "Client hydration is disabled for 120 seconds",
+        "The page becomes a Client Component"
+      ],
+      answer: 1,
+      explanation: "Time-based revalidation keeps a cache entry but allows periodic refresh—part of Next's data caching model."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- Compare RSC payload vs traditional SPA bootstrap cost.
+- When to use Server Actions vs Route Handlers.
+- Designing cache invalidation for a dashboard that mixes public and user-specific data.
+
+Pair with [Node streams](/learn/js-ts/node/node-streams) for streaming responses, or browse [/cheatsheets/js-ts](/cheatsheets/js-ts) for App Router file conventions.

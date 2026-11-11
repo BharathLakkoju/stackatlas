@@ -1,0 +1,122 @@
+---
+title: "TypeScript generics and narrowing"
+slug: ts-generics-narrowing
+kind: lesson
+track: js-ts
+module: typescript
+order: 3
+difficulty: intermediate
+prerequisites:
+  - closures
+tags:
+  - typescript
+  - generics
+  - narrowing
+estimatedMinutes: 17
+lastReviewed: "2026-11-01"
+summary: "Generics preserve relationships between inputs and outputs; control-flow narrowing turns union types into safe, specific code paths."
+related:
+  - react-rendering
+---
+
+## Why this matters
+
+Untyped `any` erases bugs until runtime. Generics let you write `first(arr)` once and keep `T` consistent. Narrowing is how TypeScript understands `if (x === null) return` so the rest of the block sees a definite type—essential for API payloads, form state, and discriminated unions in UI code.
+
+Interviewers ask for a type-safe `pick`, `Result<T, E>`, or a parser that **proves** success before you access fields.
+
+## Mental model
+
+**Generics** are type parameters: placeholders solved at call sites. Constraints (`T extends string`) limit what callers may pass while still staying flexible.
+
+**Narrowing** uses runtime checks—`typeof`, `in`, `instanceof`, equality on literals, and **discriminated unions** with a shared `kind` or `type` field—to shrink a union type in a branch.
+
+`as` assertions override the checker; prefer narrowing or validation at system boundaries.
+
+## Code
+
+```ts
+function first<T>(items: readonly T[]): T | undefined {
+  return items.length > 0 ? items[0] : undefined;
+}
+
+const n = first([1, 2, 3]);
+const s = first(["a", "b"]);
+
+type ApiSuccess = { ok: true; data: { id: string } };
+type ApiFailure = { ok: false; error: string };
+type ApiResult = ApiSuccess | ApiFailure;
+
+function handleResult(result: ApiResult): string {
+  if (!result.ok) {
+    return result.error;
+  }
+  return result.data.id;
+}
+
+function isNonNull<T>(value: T | null | undefined): value is T {
+  return value !== null && value !== undefined;
+}
+
+function parseId(raw: unknown): string | null {
+  if (typeof raw !== "object" || raw === null) {
+    return null;
+  }
+  if (!("id" in raw)) {
+    return null;
+  }
+  const id = (raw as { id: unknown }).id;
+  return typeof id === "string" ? id : null;
+}
+
+const maybeId = parseId({ id: "user-7" });
+if (isNonNull(maybeId)) {
+  console.log(maybeId.toUpperCase());
+}
+```
+
+`first` infers `number` or `string` from the argument. `handleResult` narrows on `ok`. Type predicates (`value is T`) let reusable guards refine types for callers.
+
+## Common mistakes
+
+- Defaulting generic type parameters to `any` or `unknown` without a plan.
+- Using `as SomeType` on JSON instead of narrowing or schema validation.
+- Forgetting that array `filter` does not narrow unless you use a type predicate callback.
+- Declaring generics that never appear in parameters or return types (unused `T`).
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "What does `value is T` in a return type enable?",
+      choices: [
+        "Runtime type casting without checks",
+        "A user-defined type guard that narrows for callers",
+        "Automatic JSON schema generation",
+        "Faster emitted JavaScript"
+      ],
+      answer: 1,
+      explanation: "A type predicate tells TypeScript that when the function returns true, the parameter is assignable to T in that branch."
+    },
+    {
+      prompt: "After `if (!result.ok) return result.error`, why is `result.data` allowed in the else path?",
+      choices: [
+        "Generics infer `data` always exists",
+        "Control-flow analysis narrows `ApiResult` to `ApiSuccess`",
+        "`return` erases the failure type globally",
+        "Union types become intersections automatically"
+      ],
+      answer: 1,
+      explanation: "Exiting on the failure branch leaves only the success variant, so `data` is known to exist."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- Implement `Pick<T, K>` or a typed `get(obj, key)` with keyof constraints.
+- Design a `Result` type and exhaustive `switch` on a discriminant.
+- "When would you choose Zod or Valibot over manual narrowing?"
+
+Apply these patterns in [React rendering](/learn/js-ts/react/react-rendering) for typed props and server payloads, or review [/cheatsheets/js-ts](/cheatsheets/js-ts) for quick syntax lookup.

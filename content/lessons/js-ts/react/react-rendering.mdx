@@ -1,0 +1,133 @@
+---
+title: "React rendering and reconciliation"
+slug: react-rendering
+kind: lesson
+track: js-ts
+module: react
+order: 4
+difficulty: intermediate
+prerequisites:
+  - event-loop
+  - closures
+tags:
+  - react
+  - rendering
+  - hooks
+estimatedMinutes: 16
+lastReviewed: "2026-11-01"
+summary: "React turns state updates into a new element tree, diffs it against the last commit, and updates the DOM with minimal work—if you respect keys and purity."
+related:
+  - nextjs-app-router
+---
+
+## Why this matters
+
+Misplaced `key`s remount children and wipe input focus. Effects that sync derived state fight React's render model. Understanding **render** (compute UI), **commit** (apply DOM), and **reconciliation** (diff) helps you fix performance without random `memo` everywhere.
+
+Closures from the [event loop](/learn/js-ts/internals/event-loop) lesson reappear every render: each function component run creates fresh props/state bindings until hooks persist state across renders.
+
+## Mental model
+
+Calling `setState` schedules a render. React executes your component function, producing a **tree of elements** (lightweight descriptions, not live DOM nodes). It compares the new tree to the previous one:
+
+- Same component type at a position → update props and recurse.
+- Different type → unmount old subtree, mount new.
+- Lists use **keys** to match identity across reorder; index keys break when items insert or delete.
+
+Side effects belong in `useEffect` (after paint) or event handlers—not in render body. Render must be **pure**: same props/state → same element output.
+
+Concurrent features may interrupt or retry renders; avoid mutating refs that render depends on without clear rules.
+
+## Code
+
+```ts
+import { useState, useCallback, type ReactNode } from "react";
+
+type Todo = { id: string; label: string; done: boolean };
+
+function TodoRow(props: {
+  todo: Todo;
+  onToggle: (id: string) => void;
+}): ReactNode {
+  const { todo, onToggle } = props;
+  return (
+    <li>
+      <label>
+        <input
+          type="checkbox"
+          checked={todo.done}
+          onChange={() => onToggle(todo.id)}
+        />
+        {todo.label}
+      </label>
+    </li>
+  );
+}
+
+function TodoList(): ReactNode {
+  const [items, setItems] = useState<Todo[]>([
+    { id: "a", label: "Learn reconciliation", done: false },
+    { id: "b", label: "Use stable keys", done: false },
+  ]);
+
+  const onToggle = useCallback((id: string) => {
+    setItems((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t))
+    );
+  }, []);
+
+  return (
+    <ul>
+      {items.map((todo) => (
+        <TodoRow key={todo.id} todo={todo} onToggle={onToggle} />
+      ))}
+    </ul>
+  );
+}
+```
+
+Stable `key={todo.id}` preserves row identity. Functional `setItems` avoids stale state when updates batch. `useCallback` keeps `onToggle` reference stable when passed to memoized children.
+
+## Common mistakes
+
+- Using array index as `key` when the list reorders or filters.
+- Deriving state in render with `useState` + `useEffect` instead of computing during render or `useMemo`.
+- Putting subscriptions or fetches directly in render.
+- Assuming `React.memo` fixes all perf issues while parent passes inline object literals every render.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "What is the main purpose of list keys in reconciliation?",
+      choices: [
+        "Encrypt child component props",
+        "Stably identify which items match across renders",
+        "Force synchronous rendering",
+        "Replace the need for state"
+      ],
+      answer: 1,
+      explanation: "Keys help React match prior and next children so it can reuse instances instead of remounting."
+    },
+    {
+      prompt: "Where should network fetching run in a client component pattern?",
+      choices: [
+        "Directly in the component function body each render",
+        "In an effect or data library tied to mount/invalidation",
+        "Only in class constructors",
+        "Inside ref.current assignment during render"
+      ],
+      answer: 1,
+      explanation: "Fetch in effects or dedicated data hooks avoids duplicate requests and keeps render pure."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- "Walk through what happens when `setState` is called twice in one event."
+- Virtual DOM: what is stored, what is diffed, what hits the real DOM.
+- When would you lift state vs colocate vs use context?
+
+Move to [Next.js App Router](/learn/js-ts/react/nextjs-app-router) for server components and caching, or [/interview/js-ts](/interview/js-ts) for typical frontend system questions.

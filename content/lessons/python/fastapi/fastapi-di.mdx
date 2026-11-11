@@ -1,0 +1,155 @@
+---
+title: "FastAPI dependency injection"
+slug: fastapi-di
+kind: lesson
+track: python
+module: fastapi
+order: 4
+difficulty: intermediate
+prerequisites:
+  - async-await
+  - decorators
+tags:
+  - fastapi
+  - dependency-injection
+  - api
+estimatedMinutes: 18
+lastReviewed: "2026-11-01"
+summary: "Depends() composes database sessions, auth, and settings per request so route handlers stay small and testable instead of reaching for globals."
+related:
+  - pydantic-v2
+---
+
+## Why this matters
+
+Without DI, every route opens its own DB connection or reads config from module globals—painful to mock and unsafe under concurrency. FastAPI builds a **dependency graph** per request: declare what you need, the framework resolves nested dependencies, runs cleanup after the response, and plays nicely with [async](/learn/python/internals/async-await) sessions.
+
+This is how production APIs share authentication, tenancy, and unit-of-work boundaries consistently.
+
+## Mental model
+
+**`Depends(callable)`** injects the return value of `callable` (sync or async) into your route parameter.
+
+Dependencies can depend on other dependencies—FastAPI resolves in topological order.
+
+Use **`yield`** in a dependency for setup/teardown (DB session: open before handler, close after).
+
+**Scopes**: request-scoped by default; ` lifespan` handles app-wide startup/shutdown.
+
+Keep business logic out of dependencies when possible; dependencies provide **resources and context**, not entire use cases.
+
+## Code
+
+```python
+from collections.abc import AsyncGenerator, Generator
+from contextlib import asynccontextmanager
+from typing import Annotated
+
+from fastapi import Depends, FastAPI, Header, HTTPException, status
+
+
+class Settings:
+    def __init__(self, database_url: str) -> None:
+        self.database_url = database_url
+
+
+def get_settings() -> Settings:
+    return Settings(database_url="postgresql+asyncpg://localhost/app")
+
+
+class User:
+    def __init__(self, user_id: str, role: str) -> None:
+        self.user_id = user_id
+        self.role = role
+
+
+async def get_current_user(
+    authorization: Annotated[str | None, Header()] = None,
+) -> User:
+    if authorization is None or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    token = authorization.removeprefix("Bearer ").strip()
+    if token != "demo-token":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    return User(user_id="u-100", role="member")
+
+
+class FakeSession:
+    def __init__(self) -> None:
+        self.open = True
+
+    def close(self) -> None:
+        self.open = False
+
+
+def get_db(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> Generator[FakeSession, None, None]:
+    session = FakeSession()
+    try:
+        yield session
+    finally:
+        session.close()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
+
+
+@app.get("/me")
+async def read_me(
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[FakeSession, Depends(get_db)],
+) -> dict[str, str | bool]:
+    return {"user_id": user.user_id, "db_open": db.open}
+```
+
+`get_db` yields a session and always closes it. `get_current_user` centralizes auth failures. Routes declare only what they consume.
+
+## Common mistakes
+
+- Heavy work in dependencies on every request without caching where appropriate.
+- Using sync dependencies that block the event loop inside `async def` routes without `run_in_threadpool`.
+- Forgetting that `Depends` defaults are evaluated once at import—not per request—for mutable defaults.
+- Circular dependencies between two `Depends` callables.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "What does a dependency that uses `yield` provide?",
+      choices: [
+        "Only compile-time constants",
+        "Setup before the route and teardown after the response",
+        "Automatic SQL migrations",
+        "A second event loop"
+      ],
+      answer: 1,
+      explanation: "Yield-style dependencies run code after the request finishes, ideal for closing sessions or transactions."
+    },
+    {
+      prompt: "Why use Annotated[User, Depends(get_current_user)]?",
+      choices: [
+        "It disables OpenAPI schema generation",
+        "It keeps parameter metadata and dependency injection in one typed declaration",
+        "It forces sync routes only",
+        "It replaces Pydantic models"
+      ],
+      answer: 1,
+      explanation: "Annotated (Python 3.9+) attaches Depends to the parameter for both typing and FastAPI resolution."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- Design dependencies for multi-tenant DB routing from a header.
+- Testing: override `Depends` with `app.dependency_overrides`.
+- Compare FastAPI DI to Spring or Nest patterns.
+
+Continue with [Pydantic v2](/learn/python/fastapi/pydantic-v2) for request/response models, then [SQLAlchemy async](/learn/python/fastapi/sqlalchemy-async) for real database sessions.
