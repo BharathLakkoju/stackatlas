@@ -1,0 +1,64 @@
+.prose-atlas {
+  max-width: 46rem;
+}
+.prose-atlas h1,
+.prose-atlas h2,
+.prose-atlas h3 {
+  scroll-margin-top: 5rem;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.prose-atlas h2 {
+  margin-top: 2rem;
+  font-size: 1.35rem;
+}
+.prose-atlas h3 {
+  margin-top: 1.4rem;
+  font-size: 1.1rem;
+}
+.prose-atlas p,
+.prose-atlas li {
+  line-height: 1.7;
+}
+.prose-atlas p {
+  margin: 0.9rem 0;
+}
+.prose-atlas ul,
+.prose-atlas ol {
+  margin: 0.8rem 0 0.8rem 1.2rem;
+}
+.prose-atlas ul {
+  list-style: disc;
+}
+.prose-atlas ol {
+  list-style: decimal;
+}
+.prose-atlas a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.prose-atlas .heading-anchor {
+  color: inherit;
+  text-decoration: none;
+}
+.prose-atlas .heading-anchor:hover {
+  text-decoration: underline;
+}
+.prose-atlas code:not(pre code) {
+  border-radius: 0.3rem;
+  background: var(--muted);
+  padding: 0.1rem 0.35rem;
+  font-size: 0.9em;
+}
+.prose-atlas table {
+  width: 100%;
+  font-size: 0.9rem;
+  margin: 1rem 0;
+}
+.prose-atlas th,
+.prose-atlas td {
+  border-bottom: 1px solid var(--border);
+  padding: 0.4rem 0.5rem;
+  text-align: left;
+}
