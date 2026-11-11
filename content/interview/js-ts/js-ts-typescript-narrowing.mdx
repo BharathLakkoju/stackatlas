@@ -1,0 +1,34 @@
+---
+title: "TypeScript narrowing"
+slug: js-ts-typescript-narrowing
+kind: interview
+track: js-ts
+difficulty: intermediate
+tags:
+  - typescript
+  - narrowing
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Control-flow narrowing, discriminated unions, type predicates, and asserts—not unsafe casts."
+related:
+  - ts-generics-narrowing
+followUps:
+  - "User-defined type guards?"
+  - "asserts keyword?"
+---
+How does TypeScript narrow types in conditionals?
+
+## Model answer
+
+typeof, truthiness, and early return refine unions. Discriminated unions narrow on kind field. in operator checks fields. User-defined guards return p is T. asserts functions throw to narrow after call. Prefer runtime validation (Zod) at boundaries then narrow. never in default proves exhaustiveness.
+
+
+## Follow-ups
+
+### User-defined type guards?
+
+Guards should be pure shape checks next to domain types.
+
+### asserts keyword?
+
+asserts throws; callers see narrowed type after successful call.

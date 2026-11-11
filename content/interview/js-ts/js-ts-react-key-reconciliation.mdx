@@ -1,0 +1,34 @@
+---
+title: "React keys and lists"
+slug: js-ts-react-key-reconciliation
+kind: interview
+track: js-ts
+difficulty: intermediate
+tags:
+  - react
+  - reconciliation
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Stable keys preserve list item identity; index keys break on reorder and stateful inputs."
+related:
+  - react-rendering
+followUps:
+  - "Key=random?"
+  - "Fragment keys?"
+---
+Why does React need keys, and why is index often wrong?
+
+## Model answer
+
+Keys identify which logical row survived reorder. Index keys tie identity to position—sort/insert remaps state to wrong rows and wastes DOM work. Keys are sibling-unique hints to reconciler, not props. Stable ids from data beat index. Random per render forces remount every pass. React.memo still needs list keys upstream.
+
+
+## Follow-ups
+
+### Key=random?
+
+Random keys remount children constantly.
+
+### Fragment keys?
+
+Use Fragment key when returning keyed adjacent lists.

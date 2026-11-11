@@ -1,0 +1,34 @@
+---
+title: "Debounce vs throttle"
+slug: js-ts-debounce-vs-throttle
+kind: interview
+track: js-ts
+difficulty: intermediate
+tags:
+  - performance
+  - browser
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Debounce after quiet period; throttle caps rate—for search typing vs scroll sampling."
+related:
+  - event-loop
+followUps:
+  - "Leading vs trailing edge?"
+  - "requestAnimationFrame throttle?"
+---
+Explain debounce and throttle with use cases.
+
+## Model answer
+
+Debounce: run after events pause (search API 300ms after last key). Throttle: at most once per window while events fire (scroll position). Leading vs trailing variants. lodash debounce cancel/flush. React: stable callbacks + refs for latest args. rAF throttles visual updates to display refresh.
+
+
+## Follow-ups
+
+### Leading vs trailing edge?
+
+Leading fires immediately then waits; trailing waits for pause.
+
+### requestAnimationFrame throttle?
+
+rAF ~60fps paint sync; separate throttle for network side effects.

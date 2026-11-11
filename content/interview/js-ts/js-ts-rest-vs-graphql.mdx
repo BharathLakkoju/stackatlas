@@ -1,0 +1,35 @@
+---
+title: "REST vs GraphQL"
+slug: js-ts-rest-vs-graphql
+kind: interview
+track: js-ts
+difficulty: intermediate
+tags:
+  - api
+  - architecture
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "HTTP cacheable resources vs client-shaped queries; GraphQL needs batching and cost limits."
+related:
+  - node-streams
+  - event-loop
+followUps:
+  - "GraphQL caching?"
+  - "Versioning?"
+---
+Compare REST and GraphQL for a product API.
+
+## Model answer
+
+REST: resource URLs, CDN-friendly GET caching, simple ops. GraphQL: one POST, client picks fields—less round trip, more server complexity, N+1 without DataLoader, query cost limits required. REST for cacheable CRUD and uploads; GraphQL for varied clients and evolving schemas. Both need auth, rate limits, observability. gRPC internal; browser needs gateway.
+
+
+## Follow-ups
+
+### GraphQL caching?
+
+Persisted queries and GET hashes enable CDN for allowlisted operations.
+
+### Versioning?
+
+REST /v2 paths; GraphQL deprecate fields with schema tracking.

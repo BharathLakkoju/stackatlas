@@ -1,0 +1,34 @@
+---
+title: "this binding rules"
+slug: js-ts-this-binding
+kind: interview
+track: js-ts
+difficulty: intermediate
+tags:
+  - this
+  - functions
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Default, implicit, explicit, and new binding plus lexical this in arrow functions."
+related:
+  - closures
+followUps:
+  - "Arrow in class methods?"
+  - "Strict mode default?"
+---
+How is `this` determined when a function is called?
+
+## Model answer
+
+Plain call: strict undefined, else global. obj.method(): this=obj unless extracted. call/apply/bind set this explicitly; bind returns a preset function. new: fresh object as this unless constructor returns object. Arrows lexically capture this—no call-site binding, not constructable. Class methods use implicit instance binding; static methods use class. React handlers often need bind or field arrows to keep component this.
+
+
+## Follow-ups
+
+### Arrow in class methods?
+
+Field arrow closes over instance this at construction; one function per instance.
+
+### Strict mode default?
+
+Strict default this is undefined to catch globals.

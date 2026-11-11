@@ -1,0 +1,34 @@
+---
+title: "Closures and loops"
+slug: js-ts-closure-interview
+kind: interview
+track: js-ts
+difficulty: intermediate
+tags:
+  - closures
+  - scope
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Explain shared var bindings in loops and fix with let, IIFE, or setTimeout third argument."
+related:
+  - closures
+followUps:
+  - "Memory implications?"
+  - "Module pattern?"
+---
+Why does `for (var i=0;i<5;i++) setTimeout(()=>console.log(i),100)` print five 5s?
+
+## Model answer
+
+All timeouts share one function-scoped i. When they fire, the loop finished with i=5. Use let for per-iteration bindings, an IIFE capturing i, or pass i as setTimeout's third argument. Closures retain outer bindings while inner functions live—avoid capturing large objects in long-lived listeners. ES modules close over private top-level state similarly to the module pattern.
+
+
+## Follow-ups
+
+### Memory implications?
+
+Remove listeners and drop references so closures become collectable.
+
+### Module pattern?
+
+IIFE returned API object exposes methods while hiding private vars.

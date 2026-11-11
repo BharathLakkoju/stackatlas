@@ -1,0 +1,34 @@
+---
+title: "useEffect pitfalls"
+slug: js-ts-useeffect-pitfalls
+kind: interview
+track: js-ts
+difficulty: intermediate
+tags:
+  - react
+  - hooks
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Stale closures, dependency arrays, fetch abort cleanup, and avoiding effect-driven derived state."
+related:
+  - react-rendering
+followUps:
+  - "useEffect vs useLayoutEffect?"
+  - "Strict Mode double invoke?"
+---
+What's wrong with useEffect fetching /api?id=... with [] deps?
+
+## Model answer
+
+Empty deps freeze id from first render—stale data when id prop changes. Include id in deps; abort in cleanup with AbortController. Missing deps cause subtle bugs; exhaustive-deps helps. Unconditional setState in effect can loop if deps include derived state. Prefer loaders/React Query/RSC for fetch over effect soup. useLayoutEffect blocks paint—only for DOM measure.
+
+
+## Follow-ups
+
+### useEffect vs useLayoutEffect?
+
+Layout effect before paint; useEffect after for non-blocking work.
+
+### Strict Mode double invoke?
+
+Strict Mode remounts to test effect cleanup—must be idempotent.

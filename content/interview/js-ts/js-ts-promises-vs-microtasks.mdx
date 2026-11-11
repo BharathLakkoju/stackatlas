@@ -1,0 +1,34 @@
+---
+title: "Promises vs microtasks"
+slug: js-ts-promises-vs-microtasks
+kind: interview
+track: js-ts
+difficulty: intermediate
+tags:
+  - promises
+  - async
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Promise reactions are microtasks; contrast scheduling with setTimeout and error propagation."
+related:
+  - event-loop
+followUps:
+  - "Unhandled rejection?"
+  - "Promise.all vs allSettled?"
+---
+How do Promise callbacks interact with the event loop compared to setTimeout?
+
+## Model answer
+
+Executor runs synchronously; then/catch schedule microtasks after current stack. All microtasks run before next macrotask like setTimeout. Nested promise chains can starve timers if abused. Rejections must be caught or trigger unhandledrejection. async/await is sugar—continuations are microtasks. Node's process.nextTick runs before promise microtasks.
+
+
+## Follow-ups
+
+### Unhandled rejection?
+
+Always end server chains with catch and log unhandledRejection.
+
+### Promise.all vs allSettled?
+
+all rejects on first failure; allSettled waits for every promise.
