@@ -1,0 +1,78 @@
+---
+title: "System design cheatsheet"
+slug: system-design
+kind: cheatsheet
+track: system-design
+difficulty: intermediate
+tags:
+  - scalability
+  - consistency
+  - interviews
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Capacity math, CAP/PACELC, caching, and the boxes most designs need on a whiteboard—without hand-waving."
+related:
+  - scalability-fundamentals
+  - cap-pacelc
+  - caching
+---
+
+## Interview frame (15 min)
+
+1. **Requirements**: functional + scale (QPS, storage, latency p99).
+2. **API / data model**: entities, keys, hot paths.
+3. **High-level diagram**: clients → LB → stateless app → data stores.
+4. **Deep dives**: bottleneck, failure, consistency tradeoff.
+5. **Ops**: metrics, alerts, rollout.
+
+Use [capacity tool](/tools/capacity) for back-of-envelope.
+
+## Scaling levers
+
+| Lever | Fixes | Cost |
+|-------|-------|------|
+| Vertical scale | CPU/RAM bound single node | Ceiling, blast radius |
+| Replicas (read) | Read-heavy | Stale reads, fan-out |
+| Sharding | Write/storage hot spots | Cross-shard queries, rebalancing |
+| Cache | Repeated reads | Invalidation, consistency |
+| Async queue | Spiky writes, decouple | Delivery semantics, ordering |
+| CDN | Static / edge reads | Cache purge |
+
+## CAP / PACELC (cheat)
+
+| Term | Reminder |
+|------|----------|
+| CAP | Under partition, pick C or A for that request |
+| PACELC | Else (normal), latency vs consistency |
+| Strong | Linearizable reads after write (costly) |
+| Eventual | Converges; define "how eventual" |
+
+## Caching patterns
+
+| Pattern | Use |
+|---------|-----|
+| Cache-aside | App loads DB on miss; app invalidates |
+| Read-through | Cache fetches on miss |
+| Write-behind | Fast ack; async persist (loss risk) |
+| TTL | Simple; bounded staleness |
+
+Key: **cache key design**, **stampede** (single-flight), **hot keys** (replicate in-cache).
+
+## Load balancing
+
+- **L7**: path/host routing, TLS, WAF (ALB).
+- **L4**: TCP/UDP throughput, static IP (NLB).
+- Sticky sessions only when unavoidable; prefer stateless JWT + shared store.
+
+## Rate limiting
+
+Token bucket / leaky bucket; store counters in Redis with TTL; return `429` + `Retry-After`.
+
+## Reliability checklist
+
+- Idempotency keys on payments / writes
+- Timeouts + retries with jitter (cap attempts)
+- Health checks that reflect dependencies
+- Multi-AZ; single-region DR story
+
+Lessons: [scalability](/learn/system-design/scalability-fundamentals), [CAP](/learn/system-design/cap-pacelc), [caching](/learn/system-design/caching). Cases: [interview](/interview/system-design).

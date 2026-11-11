@@ -1,0 +1,94 @@
+---
+title: "Python & FastAPI cheatsheet"
+slug: python
+kind: cheatsheet
+track: python
+difficulty: intermediate
+tags:
+  - asyncio
+  - fastapi
+  - typing
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "GIL, decorators, async I/O, FastAPI Depends, Pydantic v2, and SQLAlchemy async—what production Python services actually hinge on."
+related:
+  - gil
+  - decorators
+  - async-await
+---
+
+## GIL (one sentence)
+
+One mutex per interpreter: **only one thread runs Python bytecode at a time**; I/O and C extensions can release it.
+
+| Workload | Prefer |
+|----------|--------|
+| I/O bound (HTTP, DB) | `asyncio` or threads |
+| CPU bound Python | `multiprocessing`, native libs |
+| NumPy/pandas hot loops | C code releases GIL |
+
+## Decorators (order)
+
+```py
+@a
+@b
+def f(): ...
+# equivalent to f = a(b(f))  — bottom decorator applied first
+```
+
+Use `functools.wraps` to preserve metadata.
+
+## async vs threads
+
+```py
+import asyncio
+
+async def fetch(session, url):
+    async with session.get(url) as resp:
+        return await resp.text()
+
+async def main(urls):
+    async with aiohttp.ClientSession() as session:
+        return await asyncio.gather(*(fetch(session, u) for u in urls))
+```
+
+Async: single-threaded concurrency; **await** yields control. Threads: preemptive; watch shared state.
+
+## FastAPI Depends
+
+```py
+from fastapi import Depends, FastAPI
+
+app = FastAPI()
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+@app.get("/items")
+def list_items(db: Session = Depends(get_db)):
+    return db.query(Item).limit(20).all()
+```
+
+Depends graph = DI tree; cache with `Depends(get_settings, use_cache=True)` for singletons.
+
+## Pydantic v2
+
+- `model_validate` / `model_dump` (not dict()).
+- `Field`, `Annotated` validators; JSON schema export.
+- Fail fast at boundary; keep domain types inside service layer.
+
+## SQLAlchemy async
+
+- `AsyncSession` + `await session.execute(select(...))`.
+- One session per request; explicit `commit`/`rollback`.
+- Avoid lazy loads in async (Implicit IO) — use `selectinload`.
+
+## pytest
+
+`@pytest.fixture` scope: function / module / session; `yield` fixtures for teardown.
+
+Track: [/python](/python). Lessons: [GIL](/learn/python/gil), [decorators](/learn/python/decorators), [async](/learn/python/async-await).
