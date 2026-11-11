@@ -1,0 +1,143 @@
+---
+title: "Design a URL shortener"
+slug: url-shortener
+kind: lesson
+track: system-design
+module: case-studies
+order: 6
+difficulty: intermediate
+prerequisites:
+  - caching
+  - load-balancing
+root: false
+tags:
+  - case-study
+  - url-shortener
+  - system-design
+estimatedMinutes: 18
+lastReviewed: "2026-11-01"
+summary: "Optimize the read-heavy redirect path with caches and load balancing; generate short codes with hashing or counters and plan hot keys."
+related:
+  - rate-limiting
+  - hashing
+---
+
+## Why this matters
+
+URL shorteners are the **hello world** of system design with real tradeoffs: billions of reads, far fewer writes, custom slugs, analytics, and abuse. The interview tests whether you separate **create** (consistency, uniqueness) from **resolve** (latency, cache) and quantify storage for mappings.
+
+Tiny details matter: 301 vs 302, expiration, private links, and GDPR on click logs.
+
+## Mental model
+
+**Write path**: validate URL, pick slug (base-62 counter or hash truncated with collision check), persist `slug → longUrl`, optional async analytics enqueue.
+
+**Read path** (dominant): edge cache → app → Redis cache-aside → DB on miss; HTTP redirect response. This path should avoid the primary DB on steady state.
+
+**ID generation**: monotonic counter + encode is simple; random short codes need uniqueness checks. For encoding ideas see [Hashing](/learn/dsa/patterns/hashing) as a complement to fixed-length base62.
+
+## Code
+
+```ts
+const ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+function encodeBase62(id: number): string {
+  if (id === 0) {
+    return ALPHABET[0];
+  }
+  let n = id;
+  let out = "";
+  while (n > 0) {
+    const rem = n % 62;
+    out = ALPHABET[rem] + out;
+    n = Math.floor(n / 62);
+  }
+  return out;
+}
+
+type UrlRecord = {
+  slug: string;
+  longUrl: string;
+  createdAtMs: number;
+};
+
+class ShortenerService {
+  private nextId = 1_000_000;
+  private readonly bySlug = new Map<string, UrlRecord>();
+  private readonly cache = new Map<string, string>();
+
+  create(longUrl: string): UrlRecord {
+    const slug = encodeBase62(this.nextId);
+    this.nextId += 1;
+    const record: UrlRecord = { slug, longUrl, createdAtMs: Date.now() };
+    this.bySlug.set(slug, record);
+    this.cache.set(slug, longUrl);
+    return record;
+  }
+
+  resolve(slug: string): string | null {
+    const cached = this.cache.get(slug);
+    if (cached) {
+      return cached;
+    }
+    const record = this.bySlug.get(slug);
+    if (!record) {
+      return null;
+    }
+    this.cache.set(slug, record.longUrl);
+    return record.longUrl;
+  }
+}
+
+function estimateMappingBytes(slugs: number, avgLongUrlBytes: number): number {
+  const slugBytes = 7;
+  return slugs * (slugBytes + avgLongUrlBytes + 16);
+}
+```
+
+Production adds DB sharding by slug prefix, rate limits on create, and [Load balancing](/learn/system-design/fundamentals/load-balancing) in front of stateless redirect servers.
+
+## Common mistakes
+
+- Optimizing create latency while redirects still hit the primary on every request.
+- Hash-only slugs without collision handling or length analysis — birthday bound surprises.
+- Global unique counter single point of failure without reserved ranges per region.
+- Logging full URLs in plaintext without retention policy.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "Why cache slug → long URL for redirects?",
+      choices: [
+        "Creates need stronger consistency than reads",
+        "Reads dominate; cache avoids repeated DB lookups",
+        "HTTP forbids redirects without CDN",
+        "Base62 requires RAM"
+      ],
+      answer: 1,
+      explanation: "Resolve is read-heavy; cache-aside keeps p99 low under viral links."
+    },
+    {
+      prompt: "Counter + base62 encoding mainly guarantees:",
+      choices: [
+        "URLs are always 7 characters",
+        "Unique slugs without a random collision loop on insert",
+        "No need for a database",
+        "Geographic routing"
+      ],
+      answer: 1,
+      explanation: "Each new id maps to one slug; length grows slowly with magnitude."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- Capacity: 100:1 read/write → [Caching](/learn/system-design/fundamentals/caching) and replication for reads.
+- Custom aliases — uniqueness check on write; 409 on conflict.
+- Abuse: [Rate limiting](/learn/system-design/fundamentals/rate-limiting) on create; blocklist destinations.
+- Analytics: async stream to column store; do not block redirect.
+
+Combine [Caching](/learn/system-design/fundamentals/caching), [Load balancing](/learn/system-design/fundamentals/load-balancing), and [Rate limiting](/learn/system-design/fundamentals/rate-limiting), and compare slug generation with [Hashing](/learn/dsa/patterns/hashing) when you want opaque codes instead of sequential ids.

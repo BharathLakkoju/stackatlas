@@ -1,0 +1,133 @@
+---
+title: "Caching strategies and invalidation"
+slug: caching
+kind: lesson
+track: system-design
+module: fundamentals
+order: 3
+difficulty: intermediate
+prerequisites:
+  - scalability-fundamentals
+root: false
+tags:
+  - cache
+  - redis
+  - performance
+estimatedMinutes: 17
+lastReviewed: "2026-11-01"
+summary: "Place caches by access pattern: cache-aside, TTL, and stampede control. Name consistency cost before calling Redis the database."
+related:
+  - rate-limiting
+  - url-shortener
+---
+
+## Why this matters
+
+Most read-heavy products (feeds, profiles, URL redirects) die on the database without a cache layer. Caching buys you latency and throughput; it costs **staleness**, **invalidation complexity**, and **memory**. Interviewers listen for where the cache sits (CDN, app, Redis) and what happens on a miss or deploy.
+
+A bad cache is worse than none: thundering herds on expiry, hot keys, and cache penetration (queries for nonexistent ids hammering the DB).
+
+## Mental model
+
+**Cache-aside**: app reads cache; on miss, load DB, populate cache, return. Writes usually update DB then delete or update cache (delete is safer for composite objects).
+
+**TTL** bounds staleness when you cannot precisely invalidate. **Write-through** and **write-behind** push complexity to the cache layer for stricter or higher write throughput scenarios.
+
+Place caches closest to the reader that can tolerate staleness: CDN for static assets, Redis for hot keys, in-process for tiny read-mostly config with short TTL.
+
+## Code
+
+```ts
+type Loader = (key: string) => Promise<string | null>;
+
+class CacheAside {
+  private readonly map = new Map<string, { value: string; expiresAt: number }>();
+
+  constructor(private readonly loader: Loader, private readonly ttlMs: number) {}
+
+  async get(key: string): Promise<string | null> {
+    const now = Date.now();
+    const hit = this.map.get(key);
+    if (hit && hit.expiresAt > now) {
+      return hit.value;
+    }
+    const fresh = await this.loader(key);
+    if (fresh === null) {
+      this.map.delete(key);
+      return null;
+    }
+    this.map.set(key, { value: fresh, expiresAt: now + this.ttlMs });
+    return fresh;
+  }
+
+  invalidate(key: string): void {
+    this.map.delete(key);
+  }
+}
+
+function singleFlight<T>(inflight: Map<string, Promise<T>>, key: string, fn: () => Promise<T>): Promise<T> {
+  const existing = inflight.get(key);
+  if (existing) {
+    return existing;
+  }
+  const promise = fn().finally(() => {
+    inflight.delete(key);
+  });
+  inflight.set(key, promise);
+  return promise;
+}
+
+async function getWithStampedeProtection(
+  cache: CacheAside,
+  inflight: Map<string, Promise<string | null>>,
+  key: string
+): Promise<string | null> {
+  return singleFlight(inflight, key, () => cache.get(key));
+}
+```
+
+`singleFlight` collapses concurrent misses on one key to one backend load — a standard fix for stampedes.
+
+## Common mistakes
+
+- Caching **personalized** responses at CDN without `Vary` or private cache headers.
+- No TTL on negative cache — repeated lookups for missing keys overload the DB (use short TTL for “not found”).
+- Treating Redis as durable source of truth without persistence/replication planning.
+- Invalidating only one layer (CDN purged but app still serves stale in-memory).
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "Cache-aside on write: why delete cache key instead of updating in place?",
+      choices: [
+        "Deletes are faster than reads",
+        "Avoids race where a stale value is written over a newer DB row",
+        "Redis forbids SET",
+        "CDN requires deletes only"
+      ],
+      answer: 1,
+      explanation: "Next read reloads from DB; in-place updates race with concurrent writers."
+    },
+    {
+      prompt: "Single-flight / request coalescing primarily prevents:",
+      choices: [
+        "SSL handshake storms",
+        "Many parallel backend loads for the same cold key",
+        "Hash collisions in the DB",
+        "TCP slow start"
+      ],
+      answer: 1,
+      explanation: "On expiry, one loader repopulates while others await the same promise."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- “URL shortener read path” — see [URL shortener](/learn/system-design/case-studies/url-shortener); cache `slug → target` with TTL + invalidation on update.
+- Hot key mitigation: local micro-cache, replication shard of the key, or read pooling.
+- Tie to [Rate limiting](/learn/system-design/fundamentals/rate-limiting) when caches front abusive clients.
+
+Build on [Scalability fundamentals](/learn/system-design/fundamentals/scalability-fundamentals), then study [Rate limiting](/learn/system-design/fundamentals/rate-limiting) and the [URL shortener](/learn/system-design/case-studies/url-shortener) case study for end-to-end read paths.
