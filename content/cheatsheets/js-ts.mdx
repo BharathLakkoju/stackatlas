@@ -1,0 +1,88 @@
+---
+title: "JavaScript & TypeScript cheatsheet"
+slug: js-ts
+kind: cheatsheet
+track: js-ts
+difficulty: intermediate
+tags:
+  - runtime
+  - typescript
+  - react
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Event loop, promises, TypeScript narrowing, React rendering, and Node I/O—compressed for live coding and system reviews."
+related:
+  - event-loop
+  - closures
+  - ts-generics-narrowing
+---
+
+## Event loop (Node / browser)
+
+| Queue | Examples | Runs when |
+|-------|----------|-----------|
+| Microtask | `queueMicrotask`, Promise `.then` | After current stack, before next macrotask |
+| Macrotask | `setTimeout`, I/O callbacks | One per loop turn (simplified) |
+
+Order: sync code → drain microtasks → one macrotask → repeat.
+
+```js
+console.log("1");
+queueMicrotask(() => console.log("micro"));
+setTimeout(() => console.log("timer"), 0);
+Promise.resolve().then(() => console.log("promise"));
+console.log("2");
+// 1, 2, micro, promise, timer
+```
+
+## `this` binding
+
+| Call style | `this` |
+|------------|--------|
+| `obj.method()` | `obj` |
+| Plain `fn()` | `undefined` (strict) / global |
+| `new Fn()` | new object |
+| `fn.call(x)` | `x` |
+| Arrow | lexical `this` |
+
+## TypeScript narrowing
+
+```ts
+function parseId(raw: string | number): number {
+  if (typeof raw === "string") return parseInt(raw, 10);
+  return raw;
+}
+
+type Api = { ok: true; data: string } | { ok: false; error: string };
+function handle(r: Api) {
+  if (!r.ok) return console.error(r.error);
+  console.log(r.data);
+}
+```
+
+Discriminated unions + `typeof` / `in` / control flow analysis beat `as` casts.
+
+## React (mental model)
+
+- Render = function call → virtual tree diff.
+- **Keys** identify list identity; index keys break on reorder.
+- `useEffect` runs after paint; deps array controls re-runs (stale closures if wrong).
+- Server Components (Next App Router): default server; `"use client"` for hooks/DOM.
+
+## Node I/O
+
+- **Streams**: backpressure via `pipe`; transform without loading full file.
+- **Worker threads**: CPU-bound JS; shared memory via `SharedArrayBuffer`.
+- **Cluster**: multiple processes, same port via master; good for HTTP workers.
+
+## HTTP API style
+
+| REST | GraphQL |
+|------|---------|
+| Resource URLs, verbs | Single endpoint, client-shaped queries |
+| HTTP cache friendly | Needs field-level cache / DataLoader |
+| Simple CRUD | Aggregates, mobile clients |
+
+Debounce: wait for pause; throttle: max rate over window.
+
+Track: [/js-ts](/js-ts). Lessons: [event loop](/learn/js-ts/event-loop), [closures](/learn/js-ts/closures), [generics](/learn/js-ts/ts-generics-narrowing).

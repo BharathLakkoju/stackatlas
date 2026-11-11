@@ -1,0 +1,72 @@
+---
+title: "Java & Spring cheatsheet"
+slug: java
+kind: cheatsheet
+track: java
+difficulty: intermediate
+tags:
+  - jvm
+  - spring
+  - concurrency
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Collections, concurrency, GC, and Spring/JPA/JWT traps—compressed for backend interviews and on-call debugging."
+related:
+  - collections
+  - concurrency
+  - spring-ioc
+---
+
+## Collections (pick the right one)
+
+| Type | Implementation notes |
+|------|----------------------|
+| `ArrayList` | Random access; amortized O(1) append |
+| `HashMap` | Buckets + treeify on long chains (Java 8+) |
+| `LinkedHashMap` | Insertion/access order |
+| `ConcurrentHashMap` | Striped locks / CAS; no lock whole map |
+| `PriorityQueue` | Heap; not thread-safe |
+
+**Contract**: equal objects → equal `hashCode()`; override both together.
+
+## Concurrency
+
+| Tool | Use |
+|------|-----|
+| `synchronized` | Simple monitor; JVM intrinsic |
+| `ReentrantLock` | tryLock, fairness, conditions |
+| `volatile` | Visibility, not atomic compound ops |
+| `ExecutorService` | Pool lifecycle, bounded queues |
+
+## JVM GC (interview)
+
+- **Young** collections frequent, short pauses.
+- **Full GC** stops the world longer—tune heap, allocation rate, metaspace.
+- Watch **GC logs** and **allocation pressure**, not just max heap.
+
+## Spring IoC / scopes
+
+| Scope | Bean lifetime |
+|-------|----------------|
+| singleton | One per context (default) |
+| prototype | New per injection/get |
+| request/session | Web scopes |
+
+**@Transactional**: Spring proxy around bean—**self-invocation bypasses proxy** (call via another bean or `AopContext`).
+
+## JPA performance
+
+- **N+1**: one query per association—fix with `JOIN FETCH` or `@EntityGraph`.
+- `open-in-view=false` in production APIs (explicit fetch plans).
+
+## Security
+
+| Session cookie | JWT |
+|----------------|-----|
+| Server state | Stateless verify with secret/public key |
+| Easy revoke (server store) | Short TTL + refresh rotation |
+| CSRF concern | XSS steals token—HttpOnly cookies for refresh |
+
+`Optional` is for **return types**, not fields/params—avoid `Optional.get()` in hot paths.
+
+Track: [/java](/java). Lessons: [collections](/learn/java/collections), [concurrency](/learn/java/concurrency), [Spring IoC](/learn/java/spring-ioc).
