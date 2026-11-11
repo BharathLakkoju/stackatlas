@@ -1,0 +1,110 @@
+---
+title: "Java collections: List, Set, Map"
+slug: collections
+kind: lesson
+track: java
+module: core
+order: 1
+difficulty: beginner
+prerequisites: []
+root: true
+tags:
+  - collections
+  - hashmap
+  - arraylist
+estimatedMinutes: 16
+lastReviewed: "2026-11-01"
+summary: "Pick List, Set, or Map by access pattern and ordering needs, and know when equals/hashCode matter for correctness."
+related:
+  - concurrency
+  - spring-ioc
+---
+
+## Why this matters
+
+Production services spend most of their CPU cycles moving data between layers. The wrong collection choice shows up as subtle bugs (duplicate keys in a `Set` that should dedupe), latency spikes (`ArrayList.remove(0)` on a queue), or memory bloat (`HashMap` with no initial capacity under load).
+
+The Java Collections Framework gives you interfaces first: code against `List`, `Set`, and `Map`, then swap implementations when profiling says so.
+
+## Mental model
+
+| Need | Interface | Typical implementation |
+|------|-----------|------------------------|
+| Ordered, indexable, duplicates OK | `List` | `ArrayList` (random access), `LinkedList` (rare today) |
+| Unique elements, maybe order | `Set` | `HashSet` (fast), `TreeSet` (sorted), `LinkedHashSet` (insertion order) |
+| Key → value | `Map` | `HashMap`, `TreeMap`, `LinkedHashMap` |
+
+`HashMap` and `HashSet` depend on `equals` and `hashCode` on keys (and set elements). If you use mutable objects as keys, never change fields that participate in hash after insert.
+
+Iteration: enhanced `for` uses iterators; `ConcurrentModificationException` means you mutated a collection structurally while iterating (unless you use the iterator’s `remove` or a concurrent variant).
+
+## Code
+
+```java
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+public class CollectionsTour {
+  public static void main(String[] args) {
+    List<String> queue = new ArrayList<>();
+    queue.add("order-1");
+    queue.add("order-2");
+
+    Set<String> uniqueCustomerIds = new HashSet<>();
+    uniqueCustomerIds.add("cust-a");
+    uniqueCustomerIds.add("cust-a");
+    System.out.println("unique size: " + uniqueCustomerIds.size());
+
+    Map<String, Integer> stock = new HashMap<>();
+    stock.put("sku-widget", 42);
+    stock.merge("sku-widget", 3, Integer::sum);
+
+  }
+}
+```
+
+Use `Map.of` and `List.of` for small immutable snapshots (Java 9+). For Spring Boot APIs, DTO lists are often lists of response objects built from streams over repository rows — the stream collector still lands in an `ArrayList` unless you ask for something else.
+
+When sizing a `HashMap`, set `initialCapacity` if you know approximate entry count to reduce resize churn under load tests. `EnumMap` and `EnumSet` are faster when keys are enums because they skip hashing entirely.
+
+## Common mistakes
+
+- Using `==` instead of `equals` when searching collections of strings or custom types.
+- Assuming `HashMap` iteration order is stable across JVM versions (use `LinkedHashMap` if you need predictable order).
+- Using a bare `List` without generics in new code (legacy only).
+- Calling `subList` and forgetting structural changes to the parent list invalidate the view.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "You must reject duplicate event IDs in an ingestion pipeline with O(1) average insert. Best choice?",
+      choices: ["ArrayList", "HashSet", "TreeMap keys only", "PriorityQueue"],
+      answer: 1,
+      explanation: "HashSet provides average O(1) add and membership for unique elements when hashCode/equals are correct."
+    },
+    {
+      prompt: "Why can a mutable object used as a HashMap key cause lost entries?",
+      choices: [
+        "HashMap rehashes on every get",
+        "Changing hash-affecting fields moves the bucket",
+        "Keys must implement Serializable",
+        "HashMap allows only one key"
+      ],
+      answer: 1,
+      explanation: "hashCode is computed at insert time; mutating the key can leave the entry in the wrong bucket so get misses it."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- "When would you choose `TreeMap` over `HashMap`?"
+- Follow-up: "How does `LinkedHashMap` help with a simple LRU cache?"
+
+Next up: [Concurrency](/learn/java/core/concurrency) for thread-safe variants, or [Spring IoC](/learn/java/spring/spring-ioc) once you are wiring beans instead of `new` in `main`. See also the [Java cheatsheet](/cheatsheets/java) for a quick API refresher.

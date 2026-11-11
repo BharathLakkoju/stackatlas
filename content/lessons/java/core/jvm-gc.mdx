@@ -1,0 +1,106 @@
+---
+title: "JVM memory and garbage collection"
+slug: jvm-gc
+kind: lesson
+track: java
+module: core
+order: 3
+difficulty: intermediate
+prerequisites:
+  - collections
+tags:
+  - jvm
+  - gc
+  - heap
+estimatedMinutes: 17
+lastReviewed: "2026-11-01"
+summary: "Read heap layout, GC pause causes, and the flags you actually tune before blaming Spring for latency spikes."
+related:
+  - concurrency
+---
+
+## Why this matters
+
+When p99 latency doubles after a deploy, the culprit is often allocation pressure: short-lived objects in hot loops, oversized caches, or a young generation that cannot keep up. Understanding generational GC lets you interpret Micrometer JVM metrics and `jcmd GC.heap_info` without cargo-culting `-Xmx`.
+
+Spring Boot 3 on Java 21 defaults to G1 (or generational ZGC on supported configs). You tune when profiling proves GC is dominant, not preemptively.
+
+## Mental model
+
+Heap regions (simplified):
+
+- **Young generation**: Eden + Survivors; most objects die young after one collection.
+- **Old generation**: Long-lived app caches, session state, large buffers.
+- **Metaspace**: class metadata (not part of classic heap `-Xmx`).
+
+A **stop-the-world** pause freezes application threads while collectors mark and compact. **Concurrent** phases (G1, ZGC) reduce pause times but add CPU overhead.
+
+Signals of trouble:
+
+- Frequent young GC with rising old-gen occupancy → promotion rate or leak.
+- Full GC storms → metaspace leak, explicit `System.gc()`, or heap too small.
+- High allocation rate in flame graphs → boxing, string concatenation in loops, defensive copies.
+
+## Code
+
+```java
+public class AllocationPressure {
+  public static long boxAndDiscard(int count) {
+    long sum = 0L;
+    for (int i = 0; i < count; i += 1) {
+      Integer boxed = Integer.valueOf(i);
+      sum += boxed;
+    }
+    return sum;
+  }
+
+  public static void main(String[] args) {
+    long before = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+    long result = boxAndDiscard(500_000);
+    long after = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+    System.out.println("result=" + result + " deltaBytes=" + (after - before));
+  }
+}
+```
+
+Run with logging: `java -Xlog:gc*:stdout:time -jar app.jar`. In Kubernetes, set container memory limits above heap + native + metaspace headroom (typically heap is not 100% of the limit).
+
+Micrometer exposes `jvm.memory.used` and GC pause timers when you run Actuator metrics; alert on sustained old-gen growth after full GC rather than on a single long pause during deployment. Profile with async profiler or JFR for allocation hotspots before buying bigger instances.
+
+## Common mistakes
+
+- Setting `-Xmx` equal to container limit (OOMKill from off-heap and thread stacks).
+- Caching unbounded `Map` entries without eviction (old-gen leak).
+- Creating massive strings in logs inside tight loops.
+- Ignoring `native_memory_tracking` when suspecting direct buffers or gRPC.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "Most objects in a typical web request lifecycle are collected in which generation first?",
+      choices: ["Old generation", "Young generation", "Metaspace", "Code cache only"],
+      answer: 1,
+      explanation: "Short-lived request DTOs and buffers usually die in young GC (minor collection)."
+    },
+    {
+      prompt: "Container memory limit equals JVM -Xmx. What risk increases?",
+      choices: [
+        "Faster startup only",
+        "OS OOMKill from native and metaspace overhead",
+        "Automatic ZGC selection",
+        "No risk if using Spring Boot"
+      ],
+      answer: 1,
+      explanation: "Heap is only part of process RSS; threads, metaspace, and native buffers need headroom beyond -Xmx."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- "How would you diagnose a memory leak in a long-running Spring service?"
+- Follow-up: "G1 vs ZGC — when does each make sense?"
+
+Pair with [Concurrency](/learn/java/core/concurrency) for thread stack memory, and use the [capacity tool](/tools/capacity) when rough-sizing heap for expected load.

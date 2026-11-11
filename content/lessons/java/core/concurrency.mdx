@@ -1,0 +1,115 @@
+---
+title: "Java concurrency and virtual threads"
+slug: concurrency
+kind: lesson
+track: java
+module: core
+order: 2
+difficulty: intermediate
+prerequisites:
+  - collections
+tags:
+  - threads
+  - executors
+  - virtual-threads
+estimatedMinutes: 18
+lastReviewed: "2026-11-01"
+summary: "Separate shared mutation from task structure: use executors, confine state, and know when virtual threads beat platform pools."
+related:
+  - jvm-gc
+---
+
+## Why this matters
+
+A Spring Boot service handling ten thousand concurrent HTTP calls cannot afford one platform thread per request on a small instance. Java 21 virtual threads let you write blocking JDBC or REST code that still scales, but only if you avoid pinning (synchronized blocks inside carrier threads) and protect shared mutable state.
+
+Wrong synchronization creates deadlocks and lost updates; `ConcurrentHashMap` is not a substitute for designing who owns which data.
+
+## Mental model
+
+- **Platform threads**: OS threads, expensive, good for CPU-bound work with a small bounded pool.
+- **Virtual threads**: cheap, mount on carrier threads; ideal for blocking I/O when work is mostly waiting.
+- **ExecutorService**: submit work, control parallelism; prefer `Executors.newVirtualThreadPerTaskExecutor()` for I/O-heavy workloads on Java 21.
+
+Rules of thumb:
+
+1. Prefer immutability or message passing over locks.
+2. Use `java.util.concurrent` types (`ConcurrentHashMap`, `AtomicInteger`, `CountDownLatch`) instead of wrapping every `HashMap` with `synchronized`.
+3. Never call `parallelStream()` on a request thread in a servlet container without understanding the common ForkJoin pool.
+
+## Code
+
+```java
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
+public class VirtualThreadDemo {
+  public static String fetchLabel(int id) {
+    try {
+      Thread.sleep(50);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return "interrupted";
+    }
+    return "label-" + id;
+  }
+
+  public static void main(String[] args) throws Exception {
+    try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+      Future<String> first = executor.submit(() -> fetchLabel(1));
+      Future<String> second = executor.submit(() -> fetchLabel(2));
+      System.out.println(first.get(2, TimeUnit.SECONDS));
+      System.out.println(second.get(2, TimeUnit.SECONDS));
+    }
+  }
+}
+```
+
+Spring Boot 3.2+ can enable virtual threads for Tomcat with `spring.threads.virtual.enabled=true`. You still must keep request-scoped beans thread-safe and avoid blocking inside reactive stacks unless the whole chain is blocking-friendly.
+
+Structured concurrency (JEP 453 preview) groups related virtual threads so failures propagate cleanly; use it in greenfield code when your JDK build includes the API. For CPU-heavy transforms, keep work on a fixed `Executors.newFixedThreadPool` sized to available cores minus headroom for GC and the OS.
+
+## Common mistakes
+
+- Sharing a non-thread-safe `ArrayList` across virtual threads without synchronization.
+- Holding a lock while calling external HTTP (increases deadlock risk and pins carriers).
+- Using `ThreadLocal` heavily with virtual threads without reviewing JDK guidance on memory.
+- Assuming `@Async` automatically fixes concurrency without a configured executor.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "A Spring MVC app is I/O bound (database and HTTP). Java 21 on Tomcat — what often helps most?",
+      choices: [
+        "Increase platform thread pool to 10,000",
+        "Enable virtual threads for request handling",
+        "Replace all code with parallelStream",
+        "Disable connection pooling"
+      ],
+      answer: 1,
+      explanation: "Virtual threads let many blocking requests share few carrier threads without one OS thread per request."
+    },
+    {
+      prompt: "Two threads increment the same int field with no synchronization. What can happen?",
+      choices: [
+        "Lost updates due to non-atomic read-modify-write",
+        "Guaranteed Serializable isolation",
+        "Only deadlocks, never wrong counts",
+        "JVM throws ConcurrentModificationException on int"
+      ],
+      answer: 0,
+      explanation: "Plain int increments are not atomic across threads; use AtomicInteger or confine the counter to one thread."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- "Explain happens-before with `volatile` vs `synchronized`."
+- Follow-up: "When would you still use a fixed platform thread pool?"
+
+Read [JVM garbage collection](/learn/java/core/jvm-gc) to connect thread churn with GC pauses, or revisit [Collections](/learn/java/core/collections) for `ConcurrentHashMap` semantics. The [Java interview guide](/interview/java) often asks executor sizing next.

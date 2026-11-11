@@ -1,0 +1,128 @@
+---
+title: "Two pointers on sorted arrays"
+slug: two-pointers
+kind: lesson
+track: dsa
+module: patterns
+order: 3
+difficulty: beginner
+prerequisites:
+  - big-o-complexity
+root: false
+tags:
+  - two-pointers
+  - sorted
+  - patterns
+estimatedMinutes: 14
+lastReviewed: "2026-11-01"
+summary: "Keep left and right (or slow/fast) indices. Move them based on a monotone invariant for O(n) scans without a hash table."
+related:
+  - sliding-window
+  - hashing
+---
+
+## Why this matters
+
+When data is **sorted** or has a clear movement rule, two indices walking toward each other (or at different speeds) often replace an `O(n²)` brute force. You get one pass, `O(1)` extra space, and code that is easy to explain on a whiteboard.
+
+Classic targets: pair sum in a sorted array, removing duplicates in-place, palindrome checks, merge two sorted lists, and partitioning. If you hear “sorted input” or “in-place,” think two pointers before allocating a map.
+
+## Mental model
+
+Imagine a **tightrope between lo and hi** on a sorted array. If `nums[lo] + nums[hi]` is too small, only increasing `lo` can raise the sum; if too large, only decreasing `hi` can lower it. You never need to revisit discarded pairs because the array order makes the effect of each move predictable.
+
+A second variant is **slow/fast** on the same direction: slow marks where the next valid item should go; fast scans ahead (dedupe, move zeros, cycle detection on linked structures).
+
+## Code
+
+```ts
+function twoSumSorted(sorted: number[], target: number): [number, number] | null {
+  let lo = 0;
+  let hi = sorted.length - 1;
+  while (lo < hi) {
+    const sum = sorted[lo] + sorted[hi];
+    if (sum === target) {
+      return [lo, hi];
+    }
+    if (sum < target) {
+      lo += 1;
+    } else {
+      hi -= 1;
+    }
+  }
+  return null;
+}
+
+function removeDuplicatesInPlace(nums: number[]): number {
+  if (nums.length === 0) {
+    return 0;
+  }
+  let slow = 0;
+  for (let fast = 1; fast < nums.length; fast += 1) {
+    if (nums[fast] !== nums[slow]) {
+      slow += 1;
+      nums[slow] = nums[fast];
+    }
+  }
+  return slow + 1;
+}
+
+function isPalindromeChars(s: string): boolean {
+  let left = 0;
+  let right = s.length - 1;
+  while (left < right) {
+    if (s[left] !== s[right]) {
+      return false;
+    }
+    left += 1;
+    right -= 1;
+  }
+  return true;
+}
+```
+
+Each function is `O(n)` time. The pair-sum and palindrome checks use `O(1)` extra space. `removeDuplicatesInPlace` mutates the input and returns the length of the unique prefix.
+
+## Common mistakes
+
+- Using opposite-direction pointers on **unsorted** data without an invariant — the “move lo / move hi” logic fails.
+- Off-by-one: pair sum usually requires `lo < hi`; equal indices are not a valid pair.
+- Forgetting that in-place dedupe returns **length**, not a new array — callers must ignore tail garbage.
+- Slow/fast confusion: both pointers must advance each iteration according to the problem rule, not both blindly by one when only fast should scan.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "On a sorted array, why can we discard all pairs (lo, k) for k < hi when sum is too large?",
+      choices: [
+        "Sorted order means smaller k only decreases sum further",
+        "hi is always the maximum element",
+        "lo never moves backward",
+        "Binary search already ran"
+      ],
+      answer: 0,
+      explanation: "For fixed lo, any smaller partner than hi gives a sum no larger than the current one, so those pairs cannot reach target if the current sum is already too large."
+    },
+    {
+      prompt: "removeDuplicatesInPlace with slow/fast on a sorted array: what does slow represent?",
+      choices: [
+        "Count of duplicates found",
+        "Index of the last unique element in the write region",
+        "The pivot for quicksort",
+        "Index of the largest value"
+      ],
+      answer: 1,
+      explanation: "slow tracks the end of the deduplicated prefix; when fast finds a new value, it is copied to slow+1."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- “Two Sum on unsorted vs sorted — what changes?” — Unsorted: hash map `O(n)` space; sorted: two pointers `O(1)` space.
+- Follow-up: “3Sum with duplicates” — sort, fix one index, two-pointer the rest, skip equal neighbors.
+- Follow-up: “Container With Most Water” — opposite pointers on heights, move the shorter side.
+
+Next, [Sliding window](/learn/dsa/patterns/sliding-window) extends the same “one pass” discipline to contiguous segments, or compare with [Hashing](/learn/dsa/patterns/hashing) when the input is not sorted and you need complements in one pass.
