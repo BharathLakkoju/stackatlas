@@ -1,0 +1,117 @@
+---
+title: "Node.js streams and backpressure"
+slug: node-streams
+kind: lesson
+track: js-ts
+module: node
+order: 6
+difficulty: intermediate
+prerequisites:
+  - event-loop
+tags:
+  - node
+  - streams
+  - backpressure
+estimatedMinutes: 17
+lastReviewed: "2026-11-01"
+summary: "Streams move data in chunks so memory stays bounded; backpressure signals slow producers when consumers cannot keep pace."
+related:
+  - event-loop
+---
+
+## Why this matters
+
+Loading a 2 GB log into a string blows heap on a small container. Piping `fs.createReadStream` through a transform to `res` keeps memory near constant and aligns with how the [event loop](/learn/js-ts/internals/event-loop) schedules I/O callbacks. APIs, CLIs, and ETL jobs that ignore backpressure stall or OOM under bursty traffic.
+
+Node stream types—Readable, Writable, Transform, Duplex—show up in HTTP, gzip, crypto, and database drivers.
+
+## Mental model
+
+A **Readable** produces chunks; a **Writable** consumes them. **`pipe`** wires readable → writable and forwards backpressure: when the writable buffer is full, `readable.pause()` stops pulling until `drain`.
+
+**Transform** streams sit in the middle (parse lines, compress, JSON envelope). Mode matters: flowing mode emits `data` events; paused mode uses `read()`.
+
+Prefer `stream/promises` `pipeline` over bare `pipe` for automatic cleanup on errors. In modern Node, Web Streams interop appears in `fetch` bodies—conceptually similar chunk contracts.
+
+When you attach `data` listeners manually, check `readable.readableFlowing`; switching modes accidentally can buffer unbounded chunks in memory. For HTTP responses, `res.write` returns a boolean—`false` means you should wait for `drain` before writing more, mirroring the same backpressure contract as `pipe`.
+
+## Code
+
+```ts
+import { createReadStream, createWriteStream } from "node:fs";
+import { Transform } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import { createGzip } from "node:zlib";
+
+const upperCase = new Transform({
+  transform(chunk, encoding, callback) {
+    const text = chunk.toString(encoding);
+    callback(null, text.toUpperCase());
+  },
+});
+
+async function copyUppercase(
+  inputPath: string,
+  outputPath: string
+): Promise<void> {
+  const source = createReadStream(inputPath, { encoding: "utf8" });
+  const destination = createWriteStream(outputPath);
+  await pipeline(source, upperCase, destination);
+}
+
+async function gzipFile(inputPath: string, outputPath: string): Promise<void> {
+  const source = createReadStream(inputPath);
+  const gzip = createGzip();
+  const destination = createWriteStream(outputPath);
+  await pipeline(source, gzip, destination);
+}
+
+void copyUppercase("notes.txt", "notes-upper.txt");
+void gzipFile("notes.txt", "notes.txt.gz");
+```
+
+`pipeline` rejects on any stage error and destroys streams safely. Transforms process chunk-by-chunk instead of one giant string.
+
+## Common mistakes
+
+- Ignoring `drain` when writing manually in a loop to a slow socket.
+- Listening to `data` without handling backpressure (readable stays flowing).
+- Assuming `pipe` always propagates errors (use `pipeline`).
+- Buffering entire HTTP bodies in middleware when `req` could stream.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "What problem does backpressure solve?",
+      choices: [
+        "Encrypting stream chunks",
+        "Preventing fast producers from overwhelming slow consumers",
+        "Converting callbacks to async/await",
+        "Replacing the event loop"
+      ],
+      answer: 1,
+      explanation: "Backpressure slows or pauses production when the consumer buffer fills, keeping memory stable."
+    },
+    {
+      prompt: "Why prefer `pipeline` over manual `pipe` for production code?",
+      choices: [
+        "`pipe` is deprecated in all Node versions",
+        "`pipeline` handles errors and teardown across chained streams",
+        "`pipeline` runs synchronously on a worker thread",
+        "`pipe` cannot connect gzip transforms"
+      ],
+      answer: 1,
+      explanation: "`pipeline` returns a promise and cleans up streams when any participant errors."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- Design a line-delimited JSON parser as a Transform stream.
+- Compare streaming upload vs multipart buffering in an API gateway.
+- How would you measure memory while piping a large file?
+
+Revisit the [event loop](/learn/js-ts/internals/event-loop) for how I/O callbacks interleave with your stream handlers, or explore [/labs](/labs) for hands-on exercises.

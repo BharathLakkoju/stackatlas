@@ -1,0 +1,112 @@
+---
+title: "The JavaScript event loop"
+slug: event-loop
+kind: lesson
+track: js-ts
+module: internals
+order: 1
+difficulty: beginner
+prerequisites: []
+root: true
+tags:
+  - event-loop
+  - concurrency
+  - node
+  - browser
+estimatedMinutes: 15
+lastReviewed: "2026-11-01"
+summary: "One thread runs your JavaScript; the event loop schedules microtasks, macrotasks, and I/O so async code still feels sequential."
+related:
+  - closures
+  - node-streams
+---
+
+## Why this matters
+
+A spinner that never updates, an `await` that seems to block the whole tab, or a Node service that stalls under load often trace back to **when** work runs—not to a mythical "second JavaScript thread." The event loop is the scheduler that keeps a single call stack from freezing while timers, network, and promises interleave.
+
+If you can read a microtask versus macrotask ordering puzzle, you can predict `setTimeout(0)` behavior, understand why `await` yields before I/O completes, and design UI updates that paint before heavy work.
+
+## Mental model
+
+JavaScript runs user code on **one call stack** at a time. The runtime adds two queues:
+
+- **Macrotasks** (task queue): `setTimeout`, `setInterval`, I/O callbacks, `setImmediate` (Node).
+- **Microtasks**: `Promise` reactions, `queueMicrotask`, and in browsers often `MutationObserver`.
+
+After each macrotask, the engine drains **all** pending microtasks before the next macrotask or rendering step (in browsers). That is why `Promise.then` runs before `setTimeout(0)`.
+
+`async/await` is syntactic sugar over Promises: each `await` schedules continuation as microtasks when the awaited promise settles.
+
+## Code
+
+```ts
+function scheduleDemo(): void {
+  console.log("A");
+
+  setTimeout(() => {
+    console.log("B");
+  }, 0);
+
+  queueMicrotask(() => {
+    console.log("C");
+  });
+
+  Promise.resolve().then(() => {
+    console.log("D");
+  });
+
+  console.log("E");
+}
+
+scheduleDemo();
+// A, E, C, D, B
+```
+
+In Node, prefer `setImmediate` over `setTimeout(fn, 0)` when you want to defer after I/O phase; in browsers, `requestAnimationFrame` runs before the next paint for visual updates.
+
+Blocking the stack (a tight loop or huge synchronous parse) postpones **every** timer and promise callback—there is no parallelism inside pure JS.
+
+## Common mistakes
+
+- Assuming `setTimeout(fn, 0)` runs "immediately" (it is a macrotask, after microtasks).
+- Doing heavy CPU work on the main thread and blaming "slow async."
+- Forgetting that `await` only pauses **your** async function; other microtasks still run.
+- Mixing browser and Node ordering trivia in interviews without stating the environment.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "After synchronous code finishes a macrotask, what runs next?",
+      choices: [
+        "The next macrotask only",
+        "All pending microtasks, then possibly rendering",
+        "A new thread for each Promise",
+        "Only requestAnimationFrame callbacks"
+      ],
+      answer: 1,
+      explanation: "The event loop drains the microtask queue completely before taking the next macrotask (and may run rendering steps in browsers)."
+    },
+    {
+      prompt: "Why can a long synchronous loop freeze the UI even if you use Promises?",
+      choices: [
+        "Promises run on another CPU core by default",
+        "Microtasks cannot run until the call stack is empty",
+        "The event loop stops during loops",
+        "setTimeout has higher priority than the stack"
+      ],
+      answer: 1,
+      explanation: "While the stack is busy in synchronous code, the event loop cannot process microtasks or macrotasks; Promises only schedule work for later."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- "What order do these `console.log` calls print in?" (classic microtask vs macrotask).
+- "How would you keep the UI responsive while processing 10,000 items?"
+- Node: "Difference between `process.nextTick`, microtasks, and `setImmediate`."
+
+Continue with [Closures](/learn/js-ts/internals/closures) to see how callbacks capture state across event-loop turns, or [Node streams](/learn/js-ts/node/node-streams) for backpressure and I/O scheduling.
