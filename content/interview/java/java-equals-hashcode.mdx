@@ -1,0 +1,34 @@
+---
+title: "equals and hashCode contract"
+slug: java-equals-hashcode
+kind: interview
+track: java
+difficulty: intermediate
+tags:
+  - java
+  - collections
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Equal objects must share hashCode; broken contract breaks HashMap/HashSet invariants."
+related:
+  - collections
+followUps:
+  - "Lombok @EqualsAndHashCode?"
+  - "Subclass equality?"
+---
+State the equals/hashCode contract and why it matters for HashMap.
+
+## Model answer
+
+If a.equals(b) then a.hashCode()==b.hashCode(). Contrapositive: unequal hash codes imply unequal objects (not converse). Violating breaks hash collections—equal keys unreachable. equals must be reflexive, symmetric, transitive, consistent; compare significant fields. hashCode combines fields used in equals. For subclasses, can break symmetry if not careful—prefer composition or strict class equality. IDE/Lombok generate but review which fields belong—do not include mutable fields that change while in map.
+
+
+## Follow-ups
+
+### Lombok @EqualsAndHashCode?
+
+Lombok generates both together—exclude fields not in identity.
+
+### Subclass equality?
+
+Subclass equals parent can violate symmetry—use getClass comparison.

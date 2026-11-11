@@ -1,0 +1,34 @@
+---
+title: "GC pause tuning"
+slug: java-gc-pause
+kind: interview
+track: java
+difficulty: intermediate
+tags:
+  - jvm
+  - gc
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Young vs full GC, allocation rate, and reading pause times vs throughput collectors."
+related:
+  - jvm-gc
+followUps:
+  - "G1 vs ZGC?"
+  - "Metaspace leaks?"
+---
+What causes long GC pauses and how do you investigate?
+
+## Model answer
+
+Allocation churn fills young generation triggering frequent minor GC. Promotion failure or humongous objects trigger costly full GC with stop-the-world. Tune heap sizes (-Xms=-Xmx reduces resize), choose collector: G1 default for balanced latency, ZGC/Shenandoah for low pause on large heaps. Enable GC logs (JDK unified logging) and correlate p99 latency. Fix leaks (static caches, unclosed classloaders) raising old gen. Metaspace growth from classloader leaks causes full GC thrash. Measure allocation rate in profiler—not just max heap.
+
+
+## Follow-ups
+
+### G1 vs ZGC?
+
+G1 balances regions; ZGC targets sub-ms pauses on very large heaps with colored pointers.
+
+### Metaspace leaks?
+
+Metaspace not in heap—classloader leak prevents class unload.

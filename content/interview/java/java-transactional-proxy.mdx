@@ -1,0 +1,34 @@
+---
+title: "@Transactional proxy gotcha"
+slug: java-transactional-proxy
+kind: interview
+track: java
+difficulty: intermediate
+tags:
+  - spring
+  - transactions
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Self-invocation bypasses Spring AOP proxy so @Transactional on internal calls does not apply."
+related:
+  - spring-data-jpa
+followUps:
+  - "Propagation REQUIRED?"
+  - "Rollback rules?"
+---
+Why doesn't @Transactional work on a private method called from same class?
+
+## Model answer
+
+Spring applies transactions via JDK/CGLIB proxy around bean. External calls hit proxy; internal this.method() calls target object directly—no transaction aspect. Fix: move transactional method to another bean, inject self interface, or use AspectJ weaving. private/final also non-proxied for CGLIB limits. Propagation REQUIRED joins existing tx; REQUIRES_NEW suspends. rollbackFor includes checked exceptions you list. readOnly hints Hibernate. Enable @EnableTransactionManagement.
+
+
+## Follow-ups
+
+### Propagation REQUIRED?
+
+REQUIRED joins caller transaction; REQUIRES_NEW always new transaction.
+
+### Rollback rules?
+
+Default rolls back on RuntimeException only—specify rollbackFor for checked.

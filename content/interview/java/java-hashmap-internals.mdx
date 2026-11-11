@@ -1,0 +1,35 @@
+---
+title: "HashMap internals"
+slug: java-hashmap-internals
+kind: interview
+track: java
+difficulty: intermediate
+tags:
+  - collections
+  - hashmap
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Buckets, hash spread, treeify on long chains in Java 8+, and resize rehash behavior."
+related:
+  - collections
+  - hashing
+followUps:
+  - "Load factor?"
+  - "LinkedHashMap order?"
+---
+How does HashMap store entries and handle collisions?
+
+## Model answer
+
+HashMap is array of buckets. Key hashCode XOR spread, index = (n-1)&hash. Collisions chain nodes; beyond threshold length 8 on bucket, chain treeifies to red-black tree (Java 8+) for O(log n) worst bucket. Load factor 0.75 triggers double capacity rehash. equals compares keys; identical hashCodes required for equal keys contract. null key allowed in one bucket index 0. Not thread-safe—ConcurrentHashMap for concurrency. LinkedHashMap adds doubly-linked list for insertion or access order.
+
+
+## Follow-ups
+
+### Load factor?
+
+Default load 0.75 balances memory vs collisions; capacity always power of two.
+
+### LinkedHashMap order?
+
+LinkedHashMap maintains linked order for LRU caches with removeEldestEntry.

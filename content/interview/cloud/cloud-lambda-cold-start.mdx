@@ -1,0 +1,34 @@
+---
+title: "Lambda cold start"
+slug: cloud-lambda-cold-start
+kind: interview
+track: cloud
+difficulty: intermediate
+tags:
+  - lambda
+  - performance
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Init duration, package size, VPC ENI, and provisioned concurrency for tail latency."
+related:
+  - lambda-api-gateway
+followUps:
+  - "SnapStart?"
+  - "Arm vs x86?"
+---
+What causes Lambda cold starts and how do you reduce them?
+
+## Model answer
+
+Cold path: download image, start runtime, run static init, optional VPC ENI attach—adds seconds worst case. Mitigate: smaller deployment packages, lazy imports, arm64 Graviton often faster/cheaper, avoid unnecessary VPC or use VPC endpoints + newer hyperplane ENI faster attach. Provisioned concurrency keeps instances warm—cost tradeoff. SnapStart for Java restores from snapshot. Keep handler outside global heavy work—init once at module scope carefully. API Gateway timeouts must exceed worst cold+p95 processing.
+
+
+## Follow-ups
+
+### SnapStart?
+
+SnapStart snapshots initialized Java runtime after first invoke.
+
+### Arm vs x86?
+
+Graviton arm64 can reduce cost and sometimes init time vs x86.

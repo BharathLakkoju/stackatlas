@@ -1,0 +1,36 @@
+---
+title: "ECS vs EKS"
+slug: cloud-ecs-vs-eks
+kind: interview
+track: cloud
+difficulty: intermediate
+tags:
+  - ecs
+  - eks
+  - kubernetes
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Managed task scheduling versus portable Kubernetes control plane—see compare page for decision frame."
+related:
+  - docker-multistage
+  - cicd
+followUps:
+  - "Fargate?"
+  - "Service mesh?"
+---
+When choose ECS over EKS on AWS?
+
+## Model answer
+
+ECS is AWS-native orchestration—simpler ops, tight IAM and ALB integration, good for teams without K8s expertise. EKS provides portable Kubernetes—multi-cloud, rich ecosystem (operators, helm), higher operational burden (control plane, node upgrades, CNI). ECS on Fargate removes host management similar to EKS Fargate. Pick ECS for straightforward microservices on AWS; EKS when you need K8s APIs, GitOps already on K8s, or multi-cloud. Cost: EKS control plane hourly fee plus nodes; ECS no cluster fee. See [ECS vs EKS](/compare/ecs-vs-eks).
+
+
+## Follow-ups
+
+### Fargate?
+
+Fargate serverless tasks/pods—no EC2 management; cold task start still applies.
+
+### Service mesh?
+
+App mesh/Istio on EKS adds mTLS observability complexity.

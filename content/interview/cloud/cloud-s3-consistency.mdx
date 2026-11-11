@@ -1,0 +1,34 @@
+---
+title: "S3 consistency model"
+slug: cloud-s3-consistency
+kind: interview
+track: cloud
+difficulty: intermediate
+tags:
+  - s3
+  - storage
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Read-after-write for new objects; understand listing and overwrite semantics for app design."
+related:
+  - s3
+followUps:
+  - "Strong read?"
+  - "Versioning?"
+---
+What consistency guarantees does S3 provide?
+
+## Model answer
+
+New object PUTs are read-after-write consistent—immediate GET succeeds. Overwrites of existing keys are read-after-write for latest version. LIST/HEAD historically eventually consistent in some cases—design idempotent consumers not relying on instant list after write. Use versioning for accidental overwrite protection; MFA delete for sensitive buckets. S3 Select/encryption SSE-KMS adds KMS latency. Cross-region replication is asynchronous—drill RPO. Strong consistency expectations: use conditional writes If-None-Match for optimistic locking patterns.
+
+
+## Follow-ups
+
+### Strong read?
+
+AWS improved list consistency—still design workflows tolerant of lag.
+
+### Versioning?
+
+Versioning keeps delete markers; lifecycle rules transition storage class.

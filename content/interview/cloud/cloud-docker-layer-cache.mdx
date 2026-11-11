@@ -1,0 +1,34 @@
+---
+title: "Docker layer cache"
+slug: cloud-docker-layer-cache
+kind: interview
+track: cloud
+difficulty: intermediate
+tags:
+  - docker
+  - cicd
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Order Dockerfile instructions from least to most frequently changing; multi-stage for slim runtime."
+related:
+  - docker-multistage
+followUps:
+  - "BuildKit cache mount?"
+  - "Distroless?"
+---
+How do you maximize Docker build cache hits in CI?
+
+## Model answer
+
+Layers cache on instruction hash—COPY package files and RUN install before COPY source so dependency layer rebuilds only when lockfile changes. Multi-stage: build in builder, copy artifact to runtime image without dev deps. .dockerignore excludes node_modules/.git. BuildKit cache mounts persist apt/npm caches across builds. Pin base image digests for reproducibility; understand cache invalidates on any preceding line change. In CI, pull previous image as cache source (--cache-from) when registry allows.
+
+
+## Follow-ups
+
+### BuildKit cache mount?
+
+RUN --mount=type=cache speeds apt/pip/npm layers in BuildKit.
+
+### Distroless?
+
+Distroless runtime reduces attack surface—no shell for debugging tradeoff.

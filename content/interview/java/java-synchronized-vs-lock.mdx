@@ -1,0 +1,33 @@
+---
+title: "synchronized vs ReentrantLock"
+slug: java-synchronized-vs-lock
+kind: interview
+track: java
+difficulty: intermediate
+tags:
+  - concurrency
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Intrinsic monitor vs explicit lock with tryLock, fairness, and Conditions."
+related:
+  - concurrency
+followUps:
+  - "ReadWriteLock?"
+  - "Virtual threads?"
+---
+When prefer ReentrantLock over synchronized?
+
+## Model answer
+
+synchronized is simpler—JVM optimized, auto release on block exit. ReentrantLock adds tryLock with timeout, interruptible lock acquisition, fairness option, multiple Conditions per lock. Use lock when you need try/fail patterns or timed waits. Always unlock in finally with lock(). ReadWriteLock allows concurrent readers—good read-heavy caches. Virtual threads (Project Loom) reduce need for async but still need correct synchronization on shared mutable state.
+
+
+## Follow-ups
+
+### ReadWriteLock?
+
+ReadWriteLock: shared read lock, exclusive write.
+
+### Virtual threads?
+
+Virtual threads pin carrier if synchronized blocks native—prefer j.u.c locks in hot paths.

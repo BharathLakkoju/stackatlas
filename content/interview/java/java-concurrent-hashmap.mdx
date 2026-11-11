@@ -1,0 +1,35 @@
+---
+title: "ConcurrentHashMap"
+slug: java-concurrent-hashmap
+kind: interview
+track: java
+difficulty: intermediate
+tags:
+  - concurrency
+  - collections
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Segmented/bin synchronization, CAS, and why it does not lock the entire map on reads."
+related:
+  - concurrency
+  - collections
+followUps:
+  - "compute methods?"
+  - "size() cost?"
+---
+How is ConcurrentHashMap thread-safe without locking the whole map?
+
+## Model answer
+
+Modern CHM locks individual bins or uses CAS on first node insertion. Reads usually lock-free with volatile visibility. Writes synchronize per bin reducing contention vs Hashtable global lock. computeIfAbsent atomically creates if missing—useful caches. Iterators弱 consistent—reflect map state at creation time approximately. size is approximate under contention. Do not lock externally and iterate if you need compound atomic operations—use map's atomic methods.
+
+
+## Follow-ups
+
+### compute methods?
+
+computeIfAbsent prevents duplicate expensive creation races.
+
+### size() cost?
+
+size sums bins with contention—use for metrics not strict accounting.
