@@ -1,0 +1,43 @@
+---
+title: "RAG chunking lab"
+slug: rag-chunking
+kind: lab
+labId: rag-chunking
+track: ai
+tags:
+  - rag
+  - embeddings
+estimatedMinutes: 12
+lastReviewed: "2026-11-01"
+summary: "Sweep chunk size and overlap on sample docs; compare retrieval recall on labeled questions."
+related:
+  - rag
+  - embeddings
+---
+
+Chunking is the cheapest RAG knob and the easiest to get wrong. This lab splits sample documentation with adjustable **size**, **overlap**, and **structure-aware breaks** (headings vs raw characters). Retrieval scores update against a small golden question set baked into the lab.
+
+## What to notice
+
+- **Tiny chunks** improve pinpoint questions but drop surrounding context the model needs to synthesize.
+- **Large chunks** embed dilute topics—cosine similarity peaks for the wrong paragraph.
+- **Overlap** reduces boundary cuts through sentences but multiplies index size and ingest cost.
+- **Markdown-aware splits** often beat fixed character windows on internal wikis.
+
+## Tie-in to lessons
+
+Read [RAG](/learn/ai/rag) and [embeddings](/learn/ai/embeddings) first. Interview drill: [chunk size tradeoff](/interview/ai/ai-chunk-size-tradeoff).
+
+Production follow-through: [RAG evaluation in production](/blog/rag-evaluation-in-production) describes how to gate deploys on recall regressions.
+
+## Widget note
+
+The splitter UI and mini vector search are **app-injected**—MDX only frames the experiment. Open [/labs/rag-chunking](/labs/rag-chunking).
+
+## Experiments to run
+
+1. Fix overlap at 10% and sweep size—note recall inflection point.
+2. Toggle structure-aware mode on API reference vs narrative doc.
+3. Compare hybrid keyword + vector toggle if exposed—SKU-style queries highlight lexical needs.
+
+Track token impact with [/tools/llm-cost](/tools/llm-cost) when you increase chunk count feeding the same prompt budget.

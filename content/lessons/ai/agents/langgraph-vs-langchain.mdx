@@ -1,0 +1,140 @@
+---
+title: "LangGraph vs LangChain for agents"
+slug: langgraph-vs-langchain
+kind: lesson
+track: ai
+module: agents
+order: 4
+difficulty: intermediate
+prerequisites:
+  - llm-fundamentals
+compareWith:
+  - langchain-vs-langgraph
+tags:
+  - langgraph
+  - langchain
+  - agents
+estimatedMinutes: 17
+lastReviewed: "2026-11-01"
+summary: "LangChain composes chains; LangGraph models explicit state and cycles — pick control flow clarity over demo magic."
+related:
+  - tool-using-agents
+  - rag
+---
+
+## Why this matters
+
+Agent demos look easy until you need retries, human approval, parallel tool calls, and durable checkpoints across crashes. LangChain supplies primitives (models, tools, retrievers). **LangGraph** layers a state machine on top: nodes, edges, conditional routing, and interrupt/resume — closer to how you diagram production workflows.
+
+Teams that outgrow opaque `AgentExecutor` loops often migrate critical paths to graphs while keeping LangChain integrations for models and vector stores.
+
+## Mental model
+
+| Aspect | LangChain chains | LangGraph |
+|--------|------------------|-----------|
+| Control flow | Mostly linear LCEL | Cyclic graph with state |
+| Persistence | Optional memory objects | Checkpointers, thread IDs |
+| Human-in-the-loop | Custom hacks | `interrupt` nodes |
+| Observability | Callbacks | Same + graph visualization |
+
+Start with LangChain for quick [RAG](/learn/ai/rag/rag) prototypes. Adopt LangGraph when you need **branching**, **cycles** (tool → model → tool), or **supervisor** patterns with typed state.
+
+Read the dedicated [LangChain vs LangGraph compare page](/compare/langchain-vs-langgraph) for a side-by-side checklist.
+
+Instrument each node with latency and token metrics so you know whether slowness is the LLM or a tool. Keep tool implementations outside graph definitions to unit-test them without invoking the model.
+
+Name graph threads consistently in support tooling so operators can resume stalled human-in-the-loop flows after deploys. Cap total graph steps in configuration and surface a user-visible message when the budget exhausts instead of spinning silently.
+
+## Code
+
+```python
+from dataclasses import dataclass, field
+from typing import Literal
+
+
+@dataclass
+class AgentState:
+    messages: list[str] = field(default_factory=list)
+    step: int = 0
+
+
+def llm_node(state: AgentState) -> AgentState:
+    state.messages.append("model: plan next action")
+    state.step += 1
+    return state
+
+
+def tool_node(state: AgentState) -> AgentState:
+    state.messages.append("tool: fetched data")
+    state.step += 1
+    return state
+
+
+def route(state: AgentState) -> Literal["tool", "end"]:
+    if state.step < 3:
+        return "tool"
+    return "end"
+
+
+def run_graph() -> AgentState:
+    state = AgentState(messages=["user: status?"])
+    while route(state) == "tool":
+        state = llm_node(state)
+        state = tool_node(state)
+    state.messages.append("model: final answer")
+    return state
+
+
+def main() -> None:
+    final = run_graph()
+    print("\n".join(final.messages))
+
+
+if __name__ == "__main__":
+    main()
+```
+
+LangGraph’s real API uses `StateGraph`, `add_node`, and checkpointers — the sketch above mirrors the loop you will draw on a whiteboard.
+
+## Common mistakes
+
+- Infinite tool loops without max steps or budget caps.
+- Storing full chat in graph state instead of summaries plus retrieval.
+- One giant node instead of testable small nodes.
+- Ignoring idempotency when tools have side effects.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "You need human approval before a payment tool runs. Which fits better?",
+      choices: [
+        "Linear LCEL chain only",
+        "LangGraph with interrupt before tool node",
+        "Higher temperature",
+        "Larger context only"
+      ],
+      answer: 1,
+      explanation: "Graph interrupts pause execution until a human resumes, which is awkward in purely linear chains."
+    },
+    {
+      prompt: "LangGraph state is shared across nodes. Main design benefit?",
+      choices: [
+        "Eliminates need for tests",
+        "Explicit, inspectable agent memory and routing",
+        "Removes LLM costs",
+        "Disables tools"
+      ],
+      answer: 1,
+      explanation: "Typed state makes branches, retries, and observability first-class."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- "When would you still ship a simple chain instead of a graph?"
+- Follow-up: "How do checkpointers help multi-turn support tickets?"
+
+Next: [Tool-using agents](/learn/ai/agents/tool-using-agents). Revisit [LLM fundamentals](/learn/ai/foundations/llm-fundamentals) for token limits on long graph histories.
