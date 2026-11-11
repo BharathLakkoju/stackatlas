@@ -1,0 +1,37 @@
+---
+title: "Design search autocomplete"
+slug: system-design-search-autocomplete
+kind: interview
+track: system-design
+difficulty: intermediate
+tags:
+  - search
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Prefix index, trending queries, debounced client, edge cache."
+related:
+  - caching
+followUps:
+  - "Personalization?"
+  - "Typo tolerance?"
+---
+Typeahead suggestions for search box.
+
+## Model answer
+
+Precompute top-k per prefix from logs; trie or sorted prefix table in memory.
+
+Client debounce 150-300ms. CDN cache hot prefixes.
+
+Pipeline aggregates popularity with decay; filter banned terms.
+
+
+## Follow-ups
+
+### Personalization?
+
+Blend user history with capped weight.
+
+### Typo tolerance?
+
+Fuzzy match on top candidates or spell-correct service.

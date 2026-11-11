@@ -1,0 +1,37 @@
+---
+title: "Design a unique ID generator"
+slug: system-design-unique-id
+kind: interview
+track: system-design
+difficulty: intermediate
+tags:
+  - ids
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Snowflake time + machine + sequence; clock skew awareness."
+related:
+  - url-shortener
+followUps:
+  - "UUID vs snowflake?"
+  - "Global monotonic?"
+---
+High-rate unique sortable IDs across machines.
+
+## Model answer
+
+64-bit: timestamp | machine_id | sequence per ms. Assign machine ids; on same ms increment sequence, wait next ms on overflow.
+
+Monitor clock skew; refuse if clock moves backward.
+
+UUID v4 random opaque; snowflake better DB index locality.
+
+
+## Follow-ups
+
+### UUID vs snowflake?
+
+UUID not time-sorted; snowflake roughly increasing.
+
+### Global monotonic?
+
+Strict global order needs single sequencer; snowflake is approximate sort.
