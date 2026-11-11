@@ -1,0 +1,122 @@
+---
+title: "Spring IoC and dependency injection"
+slug: spring-ioc
+kind: lesson
+track: java
+module: spring
+order: 4
+difficulty: intermediate
+prerequisites:
+  - collections
+tags:
+  - spring
+  - ioc
+  - beans
+estimatedMinutes: 16
+lastReviewed: "2026-11-01"
+summary: "Let the container wire interfaces to implementations so tests swap fakes and production picks real adapters."
+related:
+  - spring-data-jpa
+  - spring-security-jwt
+---
+
+## Why this matters
+
+Hand-wiring `new OrderService(new JdbcOrderRepo())` in every controller test is brittle. Spring Boot’s application context creates a graph of singleton beans (by default), resolves constructor dependencies, and applies configuration properties. Misunderstanding scopes (`@RequestScope` holding a database connection) causes production-only bugs.
+
+IoC is not magic: it is structured composition root — one place that knows concrete types.
+
+## Mental model
+
+- **`@Component` / `@Service` / `@Repository`**: stereotype component scanning from your `@SpringBootApplication` package downward.
+- **Constructor injection**: preferred in Spring Boot 3; required dependencies are `final` fields, easy to unit-test without reflection.
+- **`@Configuration` + `@Bean`**: explicit factory methods for third-party clients you do not own.
+- **Profiles**: `@Profile("prod")` swap implementations (real email sender vs logging stub).
+
+Lifecycle: context refresh → bean instantiation → dependency injection → `@PostConstruct` → ready. Shutdown runs `@PreDestroy`.
+
+## Code
+
+```java
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.stereotype.Service;
+
+interface Greeter {
+  String greet(String name);
+}
+
+@Service
+class DefaultGreeter implements Greeter {
+  @Override
+  public String greet(String name) {
+    return "Hello, " + name;
+  }
+}
+
+@Service
+class WelcomeController {
+  private final Greeter greeter;
+
+  WelcomeController(Greeter greeter) {
+    this.greeter = greeter;
+  }
+
+  String welcome(String name) {
+    return greeter.greet(name);
+  }
+}
+
+@SpringBootApplication
+public class IocDemoApplication {
+  public static void main(String[] args) {
+    var context = SpringApplication.run(IocDemoApplication.class, args);
+    WelcomeController controller = context.getBean(WelcomeController.class);
+    System.out.println(controller.welcome("StackAtlas"));
+  }
+}
+```
+
+Avoid field `@Autowired` on new code; it hides dependencies and complicates testing. Use `@ConfigurationProperties` for type-safe `application.yml` binding instead of scattering `@Value`.
+
+`ApplicationContext` events (`ContextRefreshedEvent`) let you warm caches after the graph is ready without static singletons. In integration tests, `@SpringBootTest` loads the full context while `@WebMvcTest` slices web layers — choose the narrowest slice that still proves your wiring.
+
+When you extract a library JAR shared by multiple services, ship auto-configuration (`META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`) instead of `@ComponentScan` across foreign packages. That keeps classpath scanning predictable and startup times stable as modules grow.
+
+## Common mistakes
+
+- Component scanning missing a package (bean not found at runtime).
+- Circular dependencies between services (fix design or use `@Lazy` sparingly).
+- Treating prototype beans like singletons when injected into a singleton field (one instance stuck forever).
+- Putting heavy work in bean constructors instead of `@PostConstruct` or `ApplicationRunner`.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "Spring Boot 3 recommended style for mandatory dependencies?",
+      choices: ["Field @Autowired", "Setter injection only", "Constructor injection with final fields", "Static factory in main"],
+      answer: 2,
+      explanation: "Constructor injection makes dependencies explicit, immutable, and test-friendly."
+    },
+    {
+      prompt: "A @RequestScope bean is injected into a singleton service field. What happens?",
+      choices: [
+        "New proxy per HTTP request when accessed through proxy",
+        "Fresh instance on every method call globally",
+        "Bean becomes singleton automatically",
+        "Context fails to start always"
+      ],
+      answer: 0,
+      explanation: "Spring injects a scoped proxy so the singleton sees the correct request-scoped instance per call."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- "How do you test a `@Service` without starting the full context?"
+- Follow-up: "Difference between `@Component` and `@Bean`?"
+
+Continue with [Spring Data JPA](/learn/java/spring/spring-data-jpa) for persistence, then [Spring Security JWT](/learn/java/spring/spring-security-jwt) for protecting APIs. The [Java track index](/learn/java/spring/spring-ioc) lists the full Spring module order.

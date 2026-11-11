@@ -1,0 +1,116 @@
+---
+title: "Closures and lexical scope"
+slug: closures
+kind: lesson
+track: js-ts
+module: internals
+order: 2
+difficulty: intermediate
+prerequisites:
+  - event-loop
+tags:
+  - closures
+  - scope
+  - functions
+estimatedMinutes: 16
+lastReviewed: "2026-11-01"
+summary: "A function remembers the variables from the scope where it was created—not where it is called— which powers modules, hooks, and private state."
+related:
+  - react-rendering
+  - ts-generics-narrowing
+---
+
+## Why this matters
+
+Closures explain `let` in a loop with `setTimeout`, why React hooks close over stale props, and how module patterns hide implementation details without classes. Interviews use them to test whether you understand **when** values are read, not just syntax.
+
+Production bugs often come from closures capturing a **mutable** binding (one variable shared across iterations) instead of a **per-iteration** snapshot.
+
+## Mental model
+
+Lexical scope means the compiler resolves names using the nested function structure at **write time**. A closure is any function that references variables from an outer function after the outer function has returned.
+
+The engine keeps those outer bindings alive in an environment record as long as inner functions might run. That is not copy-by-value for objects: inner code sees live updates to the same object reference.
+
+`var` in a loop creates one binding; `let`/`const` create a new binding per iteration—critical for async callbacks scheduled from loops.
+
+## Code
+
+```ts
+function makeCounter(start: number): () => number {
+  let count = start;
+  return () => {
+    count += 1;
+    return count;
+  };
+}
+
+const next = makeCounter(0);
+console.log(next()); // 1
+console.log(next()); // 2
+
+function schedulePrinters(): void {
+  const ids = [1, 2, 3];
+  for (const id of ids) {
+    setTimeout(() => {
+      console.log(id);
+    }, 0);
+  }
+}
+
+schedulePrinters(); // 1, 2, 3
+
+function makeMultiplier(factor: number): (n: number) => number {
+  return (n: number) => n * factor;
+}
+
+const double = makeMultiplier(2);
+const triple = makeMultiplier(3);
+console.log(double(5), triple(5)); // 10, 15
+```
+
+Each `makeCounter` call gets its own `count`. `for (const id` gives each timeout its own `id`. Factories return specialized functions without global state.
+
+## Common mistakes
+
+- Using `var i` in a loop and expecting distinct values in deferred callbacks.
+- Thinking closures copy primitive values at creation time (they capture the binding; reassignment is visible unless you shadow with a new `const`).
+- Creating closures in hot paths that retain large outer scopes and leak memory.
+- Ignoring stale closures in React `useEffect` dependencies.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "What does `makeCounter` demonstrate about outer bindings?",
+      choices: [
+        "Outer locals are destroyed when the function returns",
+        "Inner functions can keep outer bindings alive",
+        "Only global variables can be shared",
+        "Closures only work with class fields"
+      ],
+      answer: 1,
+      explanation: "The returned function still references `count` from `makeCounter`'s scope, so the engine retains that binding."
+    },
+    {
+      prompt: "Why does `for (const id of ids)` fix the classic loop + setTimeout bug?",
+      choices: [
+        "`const` makes values immutable in memory",
+        "Each iteration gets a distinct lexical binding for `id`",
+        "`setTimeout` copies arguments by value",
+        "The event loop resets `id` each tick"
+      ],
+      answer: 1,
+      explanation: "Per-iteration bindings mean each callback closes over its own `id`, not a single shared loop variable."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- Implement `once(fn)` or a memoizer with a closure-held cache.
+- "Explain stale closures in React and how `useCallback`/`useRef` help."
+- Module pattern: export functions that share private state without globals.
+
+Next: [TypeScript generics and narrowing](/learn/js-ts/typescript/ts-generics-narrowing) for types that follow the same values closures capture, or [React rendering](/learn/js-ts/react/react-rendering) for how components re-close over props each render.

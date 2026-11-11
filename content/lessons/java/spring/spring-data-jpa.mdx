@@ -1,0 +1,162 @@
+---
+title: "Spring Data JPA in practice"
+slug: spring-data-jpa
+kind: lesson
+track: java
+module: spring
+order: 5
+difficulty: intermediate
+prerequisites:
+  - spring-ioc
+tags:
+  - jpa
+  - hibernate
+  - repositories
+estimatedMinutes: 18
+lastReviewed: "2026-11-01"
+summary: "Map entities, keep transactions at the service boundary, and avoid N+1 queries before they hit production traffic."
+related:
+  - spring-security-jwt
+---
+
+## Why this matters
+
+Most Spring Boot CRUD APIs sit on Spring Data JPA with Hibernate as the provider. The framework removes boilerplate until you hit lazy-loading exceptions, accidental `select *` cascades, or migrations that drift from entities. Production teams win by keeping repositories thin and transactions explicit on services.
+
+JPA is an ORM contract; SQL still runs underneath — explain plans matter.
+
+## Mental model
+
+- **`@Entity`**: maps to a table; respect equals/hashCode on identifiers, not mutable fields.
+- **Repository interfaces**: extend `JpaRepository<Entity, Id>`; derive queries from method names or `@Query`.
+- **`@Transactional`**: default on service layer methods that coordinate multiple writes; read-only for queries when supported.
+- **Fetch type**: `LAZY` associations load on access inside a session; outside → `LazyInitializationException`.
+
+Pagination: `Pageable` on repository methods returns a `Page` without loading the whole table.
+
+## Code
+
+```java
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Entity
+class Product {
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
+  private String sku;
+  private int stock;
+
+  Long getId() {
+    return id;
+  }
+
+  String getSku() {
+    return sku;
+  }
+
+  void setSku(String sku) {
+    this.sku = sku;
+  }
+
+  int getStock() {
+    return stock;
+  }
+
+  void setStock(int stock) {
+    this.stock = stock;
+  }
+}
+
+interface ProductRepository extends JpaRepository<Product, Long> {}
+
+@Service
+class StockService {
+  private final ProductRepository products;
+
+  StockService(ProductRepository products) {
+    this.products = products;
+  }
+
+  @Transactional
+  Product restock(Long id, int delta) {
+    Product product = products.findById(id).orElseThrow();
+    product.setStock(product.getStock() + delta);
+    return product;
+  }
+}
+
+@SpringBootApplication
+public class JpaDemoApplication implements CommandLineRunner {
+  private final ProductRepository products;
+  private final StockService stock;
+
+  JpaDemoApplication(ProductRepository products, StockService stock) {
+    this.products = products;
+    this.stock = stock;
+  }
+
+  @Override
+  public void run(String... args) {
+    Product created = new Product();
+    created.setSku("widget");
+    created.setStock(10);
+    products.save(created);
+    stock.restock(created.getId(), 5);
+    System.out.println(products.findById(created.getId()).map(Product::getStock).orElse(-1));
+  }
+
+  public static void main(String[] args) {
+    SpringApplication.run(JpaDemoApplication.class, args);
+  }
+}
+```
+
+Use Flyway or Liquibase for schema ownership; `ddl-auto=update` is for local dev only. For read-heavy paths, consider projections or a separate query layer instead of widening entity graphs.
+
+## Common mistakes
+
+- `@Transactional` on private methods (Spring AOP ignores them).
+- Eager `OneToMany` on large collections (N+1 or huge joins).
+- Storing JSON blobs in entities without migration strategy.
+- Open session in view masking lazy-load storms in controllers.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "LazyInitializationException after a service method returns. Typical cause?",
+      choices: [
+        "Missing @Entity annotation",
+        "Accessing lazy association outside an open persistence context",
+        "Using UUID primary keys",
+        "H2 versus Postgres dialect"
+      ],
+      answer: 1,
+      explanation: "Lazy loads need an active session; access in the web layer after the transaction closed triggers the exception."
+    },
+    {
+      prompt: "Where should @Transactional usually live in a layered Spring app?",
+      choices: ["Controller", "Service", "Entity", "Repository interface only"],
+      answer: 1,
+      explanation: "Services own use-case boundaries and coordinate multiple repository calls in one transaction."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- "How do you fix N+1 without eager-loading everything?"
+- Follow-up: "When would you bypass JPA for native SQL?"
+
+Secure the API next with [Spring Security JWT](/learn/java/spring/spring-security-jwt). Review [Spring IoC](/learn/java/spring/spring-ioc) if bean wiring for repositories is unclear.

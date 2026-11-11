@@ -1,0 +1,115 @@
+---
+title: "Spring Security 6 and JWT APIs"
+slug: spring-security-jwt
+kind: lesson
+track: java
+module: spring
+order: 6
+difficulty: intermediate
+prerequisites:
+  - spring-ioc
+tags:
+  - security
+  - jwt
+  - oauth2
+estimatedMinutes: 19
+lastReviewed: "2026-11-01"
+summary: "Stateless bearer tokens, a SecurityFilterChain, and method security — the baseline for Spring Boot 3.3 resource servers."
+related:
+  - spring-data-jpa
+---
+
+## Why this matters
+
+Mobile and SPA clients expect stateless APIs. Spring Security 6 replaces the old `WebSecurityConfigurerAdapter` with a `SecurityFilterChain` bean, integrates OAuth2 Resource Server for JWT validation, and maps scopes or roles to `@PreAuthorize`. Getting issuer, audience, and clock skew wrong produces intermittent 401s that are painful to debug in production.
+
+JWTs are credentials, not sessions: short TTL, refresh via a separate flow, never log full tokens.
+
+## Mental model
+
+Pipeline (simplified):
+
+1. Request hits `Authorization: Bearer` plus a JWT.
+2. `BearerTokenAuthenticationFilter` parses and hands off to `JwtAuthenticationProvider`.
+3. Validator checks signature (JWKS from issuer), `exp`, `nbf`, optional `aud`.
+4. `JwtAuthenticationToken` lands in `SecurityContextHolder`.
+5. `@PreAuthorize("hasAuthority('SCOPE_read')")` enforces fine-grained rules.
+
+For first-party login (username/password), issue tokens from your auth service with a signing key or use an identity provider (Cognito, Auth0) and validate the same way.
+
+## Code
+
+```java
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.web.SecurityFilterChain;
+
+@SpringBootApplication
+public class SecurityJwtDemoApplication {
+
+  @Bean
+  SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    http
+        .csrf(csrf -> csrf.disable())
+        .authorizeHttpRequests(auth -> auth
+            .requestMatchers("/actuator/health").permitAll()
+            .requestMatchers("/api/public/**").permitAll()
+            .anyRequest().authenticated())
+        .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
+    return http.build();
+  }
+
+  public static void main(String[] args) {
+    SpringApplication.run(SecurityJwtDemoApplication.class, args);
+  }
+}
+```
+
+Configure `spring.security.oauth2.resourceserver.jwt.issuer-uri` so Boot pulls JWKS automatically. Pair with [Spring Data JPA](/learn/java/spring/spring-data-jpa) entities only after authorization checks — never trust client-sent user IDs without matching JWT claims.
+
+For service-to-service calls inside a mesh, propagate identity with mTLS or signed service tokens instead of reusing end-user JWTs with inflated scopes. Enable `spring.security.oauth2.resourceserver.jwt.audiences` when your authorization server issues multiple API identifiers.
+
+Expose problem-details JSON (`application/problem+json`) from authentication entry points so mobile clients distinguish expired tokens from wrong audiences without parsing stack traces. Rotate signing keys on the issuer and rely on JWKS caching headers instead of hard-coding individual JWK IDs in every microservice.
+
+Add integration tests with `SecurityMockMvcRequestPostProcessors.jwt()` builders so regressions in authority mapping surface in CI instead of in production 403 storms.
+
+## Common mistakes
+
+- Disabling CSRF globally without understanding cookie-based clients still need protection.
+- Storing JWTs in localStorage when XSS risk exists (HttpOnly cookies or BFF patterns are alternatives).
+- Using symmetric secrets in multi-service meshes without rotation.
+- Mapping every scope manually instead of using `JwtGrantedAuthoritiesConverter` customization once.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "Spring Boot 3.3 resource server: where does JWT signature verification typically get keys?",
+      choices: [
+        "Hard-coded in @Entity",
+        "JWKS endpoint from configured issuer-uri",
+        "Only from application.yml password",
+        "Client sends public key in header"
+      ],
+      answer: 1,
+      explanation: "Resource server fetches JSON Web Key Set from the issuer to validate RS256/ES256 signatures."
+    },
+    {
+      prompt: "A valid JWT but missing required scope on @PreAuthorize. HTTP result?",
+      choices: ["200 with empty body", "403 Forbidden", "302 redirect", "500 always"],
+      answer: 1,
+      explanation: "Authentication succeeded but authorization failed; Spring Security returns 403 for insufficient authority."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- "Difference between authentication and authorization in your filter chain?"
+- Follow-up: "How do you test `@PreAuthorize` with MockMvc and a fake Jwt?"
+
+Back to [Spring Data JPA](/learn/java/spring/spring-data-jpa) for persistence patterns, or the [Java interview guide](/interview/java) for security follow-ups.
