@@ -57,7 +57,7 @@ Do not put `import` statements in MDX. `Quiz` and `Callout` are provided by the 
 ## Deployment
 
 1. Push to GitHub. CI runs the same gates plus `tsc`, lint, production build, and Lighthouse budgets (performance / accessibility / SEO ≥ 0.95) against `/`, `/dsa`, and a lesson.
-2. Import the repo in Vercel (framework: Next.js). Set `NEXT_PUBLIC_SITE_URL` to the production origin.
+2. Import the repo in Vercel (framework: Next.js). Set `NEXT_PUBLIC_SITE_URL` to the production origin. If install still ignores `pnpm-lock.yaml`, add project env `ENABLE_EXPERIMENTAL_COREPACK=1` (build + install). The repo already pins `packageManager` to pnpm 10 and Node 22.
 3. Preview deployments are created per pull request by Vercel.
 
 Analytics use `@vercel/analytics` and Speed Insights. Error reporting is a no-op unless you later add a DSN-backed `/api/error` handler.
