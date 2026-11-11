@@ -1,0 +1,33 @@
+---
+title: "typing overloads"
+slug: python-typing-overloads
+kind: interview
+track: python
+difficulty: intermediate
+tags:
+  - typing
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "@overload signatures for type checkers; single runtime implementation dispatches behavior."
+related:
+  - pydantic-v2
+followUps:
+  - "TypeGuard vs overload?"
+  - "Literal narrowing?"
+---
+Why use @overload in Python typing?
+
+## Model answer
+
+Overload declares multiple type signatures for one implementation—checkers pick based on argument types. Example: process(str)->str and process(bytes)->bytes with single body using isinstance. Overloads are not runtime dispatch—only for static analysis. TypeGuard narrows in if blocks. Literal parameters narrow return types. Prefer unions and TypedDict for simpler cases before heavy overloads.
+
+
+## Follow-ups
+
+### TypeGuard vs overload?
+
+TypeGuard returns bool predicate narrowing type in true branch.
+
+### Literal narrowing?
+
+Literal['a','b'] in argument narrows return when matched.

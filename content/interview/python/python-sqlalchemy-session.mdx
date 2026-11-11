@@ -1,0 +1,34 @@
+---
+title: "SQLAlchemy session lifecycle"
+slug: python-sqlalchemy-session
+kind: interview
+track: python
+difficulty: intermediate
+tags:
+  - sqlalchemy
+  - orm
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "One session per request, explicit commit/rollback, and eager loads to avoid implicit IO in async."
+related:
+  - sqlalchemy-async
+followUps:
+  - "Session vs scoped?"
+  - "Expire on commit?"
+---
+How should a web app manage SQLAlchemy sessions?
+
+## Model answer
+
+Open session at request start, rollback on exception, commit on success, close always. Do not share sessions across concurrent tasks. Identity map tracks loaded objects—long-lived session grows stale. expire_on_commit refreshes on next access. Async: AsyncSession with await execute; avoid lazy load in async context—use selectinload/joinedload in query. Pattern matches FastAPI yield Depends.
+
+
+## Follow-ups
+
+### Session vs scoped?
+
+scoped_session binds thread-local in threaded apps; async uses task-local context.
+
+### Expire on commit?
+
+expire_on_commit True means attributes refresh after commit—surprise if expecting cached values.
