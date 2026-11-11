@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
-import { globSync } from "glob";
 import { frontmatterSchema, roadmapSchema, type Frontmatter, type LoadedDocument, type Roadmap } from "./schema";
 import type { TrackId } from "./tracks";
 
@@ -15,9 +14,20 @@ export function contentDir(): string {
   return CONTENT_DIR;
 }
 
+function listFiles(dir: string, match: (name: string) => boolean): string[] {
+  if (!fs.existsSync(dir)) return [];
+  const out: string[] = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...listFiles(full, match));
+    else if (entry.isFile() && match(entry.name)) out.push(full);
+  }
+  return out;
+}
+
 export function loadAllDocuments(force = false): LoadedDocument[] {
   if (cache && !force) return cache;
-  const files = globSync("**/*.{mdx,md}", { cwd: CONTENT_DIR, nodir: true, absolute: true });
+  const files = listFiles(CONTENT_DIR, (name) => name.endsWith(".mdx") || name.endsWith(".md"));
   const docs: LoadedDocument[] = [];
   const errors: string[] = [];
 
@@ -46,7 +56,7 @@ export function loadAllDocuments(force = false): LoadedDocument[] {
 
 export function loadRoadmaps(force = false): Roadmap[] {
   if (roadmapCache && !force) return roadmapCache;
-  const files = globSync("content/roadmaps/*.json", { cwd: ROOT, nodir: true, absolute: true });
+  const files = listFiles(path.join(ROOT, "content/roadmaps"), (name) => name.endsWith(".json"));
   const maps: Roadmap[] = [];
   const errors: string[] = [];
   for (const filePath of files) {

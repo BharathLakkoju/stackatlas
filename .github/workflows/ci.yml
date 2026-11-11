@@ -28,7 +28,7 @@ jobs:
       - run: pnpm content:report
       - run: pnpm exec tsc --noEmit
       - run: pnpm lint
-      - run: pnpm build
+      - run: pnpm build:check
       - name: Lighthouse budgets
         run: |
           pnpm exec next start -p 4317 &
