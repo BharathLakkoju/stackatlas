@@ -1,0 +1,55 @@
+---
+title: "Express vs Fastify"
+slug: express-vs-fastify
+kind: compare
+left: node-streams
+right: event-loop
+track: js-ts
+tags:
+  - node
+  - http
+estimatedMinutes: 7
+lastReviewed: "2026-11-01"
+summary: "Express favors ecosystem familiarity; Fastify trades schema-first routes and lower overhead—both ride the same Node event loop."
+related:
+  - node-streams
+  - event-loop
+---
+
+## At a glance
+
+| | Express | Fastify |
+|---|---------|---------|
+| Ecosystem | Largest middleware catalog | Growing; JSON schema core |
+| Performance | Adequate for many APIs | Lower per-request overhead |
+| Validation | Bring Zod/Joi yourself | JSON Schema hooks |
+| Mental model | Minimal, middleware stack | Encapsulation + plugins |
+| Streams | req/res streams supported | Same Node primitives |
+
+## Shared runtime
+
+Both run on Node's **single-threaded event loop**—heavy CPU still blocks unless offloaded to workers (see [event-loop](/learn/js-ts/event-loop) lesson). High-throughput services win more from async I/O patterns and avoiding sync CPU in handlers than from framework microseconds alone.
+
+For streaming uploads/downloads, patterns are identical: Node [streams](/learn/js-ts/node-streams), backpressure, and error propagation on `pipeline()`.
+
+## Express strengths
+
+Battle-tested, huge Stack Overflow surface, fits teams already standardized on it. Middleware ordering is familiar; risk is **untyped** handlers and validation drift unless you enforce a wrapper.
+
+## Fastify strengths
+
+Schema-driven routes generate serializers/validators, catching bad payloads early. Plugin encapsulation reduces accidental global state. Often shows better RPS on JSON-heavy APIs in benchmarks—validate on *your* workload.
+
+## Migration reality
+
+Incremental adoption is possible: mount Fastify behind a reverse proxy for new routes, or vice versa, but two frameworks in one codebase has tax. Pick one for greenfield services.
+
+## Choose Express when
+
+Team velocity depends on copy-paste middleware, monolith is modest QPS, and performance headroom is proven with profiling.
+
+## Choose Fastify when
+
+You want schemas as API contracts, expect high JSON throughput, or build plugins reused across microservices.
+
+More: [/cheatsheets/js-ts](/cheatsheets/js-ts), [/interview/js-ts](/interview/js-ts).

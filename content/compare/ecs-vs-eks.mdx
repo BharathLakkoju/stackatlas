@@ -1,0 +1,53 @@
+---
+title: "ECS vs EKS on AWS"
+slug: ecs-vs-eks
+kind: compare
+left: docker-multistage
+right: cicd
+track: cloud
+tags:
+  - aws
+  - kubernetes
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "ECS is AWS-native task scheduling with less control-plane ops; EKS is portable Kubernetes with ecosystem depth and overhead."
+related:
+  - docker-multistage
+  - cicd
+---
+
+## At a glance
+
+| | Amazon ECS | Amazon EKS |
+|---|------------|------------|
+| API | AWS tasks/services | Kubernetes API |
+| Portability | AWS-focused | Multi-cloud / hybrid |
+| Ops load | Lower for many teams | Control plane + node lifecycle |
+| Integrations | IAM, ALB native | Rich operator/Helm ecosystem |
+| Cost | No cluster fee (Fargate/EC2 modes) | Control plane hourly + nodes |
+
+## Image and deploy path
+
+Both consume the same **container images**—optimize Dockerfiles ([multi-stage builds](/learn/cloud/docker-multistage)) and CI ([GitHub Actions OIDC](/learn/cloud/cicd)) regardless of orchestrator.
+
+ECS pushes task definitions; EKS applies manifests or Helm. Faster image builds improve both equally.
+
+## ECS fit
+
+Teams without existing Kubernetes skills, mostly on AWS, wanting tight ALB + IAM task roles without operating etcd backups. **Fargate** removes instance patching at task-level cost.
+
+## EKS fit
+
+Organizations standardized on Kubernetes, using operators (service mesh, cert-manager), or needing portable manifests across clouds. You pay control-plane hours and staffing for upgrades, CNI quirks, and API deprecations.
+
+## Interview framing
+
+Say explicitly: **workload portability vs operational simplicity**. Mention Fargate vs managed node groups, VPC CNI IP consumption, and observability (Container Insights vs Prometheus stack).
+
+Cloud interview tie-in: [cloud-ecs-vs-eks](/interview/cloud/cloud-ecs-vs-eks).
+
+## Not either/or
+
+Some enterprises run EKS for product teams and ECS for batch jobs. Compare helps **defaults** for a new service, not religion.
+
+Cheatsheet: [/cheatsheets/cloud](/cheatsheets/cloud). Lessons: [VPC](/learn/cloud/vpc), [CI/CD](/learn/cloud/cicd).
