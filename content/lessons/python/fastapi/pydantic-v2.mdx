@@ -1,0 +1,142 @@
+---
+title: "Pydantic v2 models and validation"
+slug: pydantic-v2
+kind: lesson
+track: python
+module: fastapi
+order: 5
+difficulty: intermediate
+prerequisites:
+  - fastapi-di
+tags:
+  - pydantic
+  - validation
+  - typing
+estimatedMinutes: 16
+lastReviewed: "2026-11-01"
+summary: "Pydantic v2 validates and serializes data with Rust-core speed—use model validators, strict types, and model_config to keep APIs honest at the edge."
+related:
+  - sqlalchemy-async
+---
+
+## Why this matters
+
+JSON bodies arrive messy: strings instead of numbers, missing fields, extra keys that hide typos. FastAPI uses Pydantic models to parse and document your API. v2 rewrote validation (**pydantic-core**), changed config to `model_config`, and moved validators to `@field_validator` / `@model_validator`.
+
+Getting v2 right prevents silent coercion bugs and keeps OpenAPI schemas accurate for clients.
+
+## Mental model
+
+**`BaseModel`** subclasses describe fields with types and constraints (`Field`, `Annotated`).
+
+**Validation runs on construction**: `User.model_validate(data)` for dicts, `model_validate_json` for bytes/str.
+
+**Serialization**: `model_dump()` for Python dicts, `model_dump_json()` for JSON; use `mode="json"` when you need JSON-safe values (e.g. `datetime` → string).
+
+**Validators** refine or cross-check fields after parsing. Prefer explicit types over `Any`.
+
+**Settings**: `model_config = ConfigDict(extra="forbid")` rejects unknown keys—valuable for public APIs.
+
+## Code
+
+```python
+from datetime import datetime, timezone
+from typing import Annotated
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+
+class OrderItem(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    sku: Annotated[str, Field(min_length=3, max_length=32)]
+    quantity: Annotated[int, Field(ge=1, le=10_000)]
+    unit_price_cents: Annotated[int, Field(ge=0)]
+
+    @field_validator("sku")
+    @classmethod
+    def normalize_sku(cls, value: str) -> str:
+        return value.upper()
+
+
+class CreateOrder(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    customer_email: Annotated[str, Field(min_length=3)]
+    items: list[OrderItem]
+    placed_at: datetime | None = None
+
+    @model_validator(mode="after")
+    def default_timestamp(self) -> "CreateOrder":
+        if self.placed_at is None:
+            self.placed_at = datetime.now(timezone.utc)
+        return self
+
+    @model_validator(mode="after")
+    def require_items(self) -> "CreateOrder":
+        if not self.items:
+            raise ValueError("Order must include at least one item")
+        return self
+
+
+def total_cents(order: CreateOrder) -> int:
+    return sum(item.quantity * item.unit_price_cents for item in order.items)
+
+
+raw = {
+    "customer_email": "ada@example.com",
+    "items": [
+        {"sku": "abc-1", "quantity": 2, "unit_price_cents": 500},
+    ],
+}
+
+order = CreateOrder.model_validate(raw)
+print(order.model_dump())
+print(total_cents(order))
+```
+
+SKU normalizes to uppercase; extra JSON keys fail fast; empty carts raise before your DB sees them.
+
+## Common mistakes
+
+- Using v1 patterns (`class Config`, `@validator`) in new code.
+- Mutating ORM instances in place instead of `model_validate` from attributes with `from_attributes=True`.
+- Returning models directly without thinking about response_model filtering.
+- Relying on silent coercion (`"42"` → int) when `strict=True` is safer for admin APIs.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "What does `extra='forbid'` in model_config do?",
+      choices: [
+        "Allows any additional JSON fields",
+        "Raises validation error on unexpected fields",
+        "Disables field validators",
+        "Converts models to SQLAlchemy rows"
+      ],
+      answer: 1,
+      explanation: "forbid rejects unknown keys, catching client typos and oversharing early."
+    },
+    {
+      prompt: "When should you prefer `model_validator(mode='after')`?",
+      choices: [
+        "To validate cross-field rules on the fully built model",
+        "Only for JSON serialization",
+        "To replace FastAPI Depends",
+        "To disable timezone-aware datetimes"
+      ],
+      answer: 1,
+      explanation: "After validators run when all fields are present—ideal for totals, consistency checks, and defaults involving multiple fields."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- Partial updates: `model_copy(update=...)` vs dedicated PATCH schemas.
+- Performance: when to use `TypeAdapter` for non-model types.
+- Mapping Pydantic models to domain entities without leaking validation into services.
+
+Pair with [SQLAlchemy async](/learn/python/fastapi/sqlalchemy-async) using `from_attributes=True`, or [/cheatsheets/python](/cheatsheets/python) for Field shorthand.

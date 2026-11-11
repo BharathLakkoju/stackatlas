@@ -1,0 +1,135 @@
+---
+title: "SQLAlchemy 2.0 async sessions"
+slug: sqlalchemy-async
+kind: lesson
+track: python
+module: fastapi
+order: 6
+difficulty: advanced
+prerequisites:
+  - fastapi-di
+  - async-await
+tags:
+  - sqlalchemy
+  - asyncpg
+  - database
+estimatedMinutes: 18
+lastReviewed: "2026-11-01"
+summary: "SQLAlchemy 2.0 async engine and session patterns keep awaitable DB I/O inside FastAPI's event loop while explicit commits guard data integrity."
+related:
+  - pydantic-v2
+---
+
+## Why this matters
+
+Calling sync SQL inside `async def` routes blocks every other request. SQLAlchemy 2.0's **`AsyncSession`** with `asyncpg` (Postgres) is the standard stack for FastAPI services. You still need clear transaction boundaries, eager loading discipline, and dependency `yield` cleanup from [FastAPI DI](/learn/python/fastapi/fastapi-di).
+
+Advanced interviews probe N+1 queries, session scope per request, and migration from 1.x `sessionmaker` patterns.
+
+## Mental model
+
+**Engine**: `create_async_engine(url, echo=False)` builds a pool; URL uses `postgresql+asyncpg://`.
+
+**Session factory**: `async_sessionmaker(engine, expire_on_commit=False)` creates sessions.
+
+**Queries**: use `select(Model)` with `await session.execute(stmt)` and `result.scalars().all()`—2.0 style, not legacy `session.query`.
+
+**Unit of work**: typically one session per request; `commit` on success, `rollback` on error, `close` in `finally`.
+
+**ORM models**: `DeclarativeBase`, typed `Mapped` columns, `relationship` with `lazy="selectin"` when lists are needed in APIs.
+
+**Migrations** stay on sync Alembic URLs (`postgresql://`) even when the app uses `asyncpg`; run migrations in deploy jobs, not inside request handlers.
+
+## Code
+
+```python
+from collections.abc import AsyncGenerator
+
+from fastapi import Depends, FastAPI
+from sqlalchemy import String, select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class Book(Base):
+    __tablename__ = "books"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(200))
+
+
+DATABASE_URL = "postgresql+asyncpg://user:pass@localhost:5432/demo"
+
+engine = create_async_engine(DATABASE_URL, pool_pre_ping=True)
+SessionLocal = async_sessionmaker(engine, expire_on_commit=False)
+
+app = FastAPI()
+
+
+async def get_session() -> AsyncGenerator[AsyncSession, None]:
+    async with SessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
+
+@app.get("/books")
+async def list_books(session: AsyncSession = Depends(get_session)) -> list[dict[str, int | str]]:
+    stmt = select(Book).order_by(Book.id)
+    result = await session.execute(stmt)
+    books = result.scalars().all()
+    return [{"id": book.id, "title": book.title} for book in books]
+```
+
+`get_session` commits if the handler finishes cleanly; exceptions trigger rollback. Handlers stay thin and only orchestrate queries.
+
+## Common mistakes
+
+- Sharing one global `AsyncSession` across requests (not thread/task safe).
+- Forgetting `await` on `session.execute`, `commit`, `flush`.
+- Lazy-loading relationships after commit with expired instances—set `expire_on_commit=False` or load eagerly.
+- Running Alembic or sync engines against async URLs without the matching driver.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "Why use `async with SessionLocal() as session` in a dependency?",
+      choices: [
+        "It disables connection pooling",
+        "It guarantees session closure after the request",
+        "It runs queries on a background thread automatically",
+        "It replaces Pydantic validation"
+      ],
+      answer: 1,
+      explanation: "Context manager semantics close the session and return connections to the pool even on errors."
+    },
+    {
+      prompt: "What is the SQLAlchemy 2.0 style to fetch rows?",
+      choices: [
+        "session.query(Book).all()",
+        "await session.execute(select(Book))",
+        "Book.select_all_sync()",
+        "raw SQL only"
+      ],
+      answer: 1,
+      explanation: "2.0 uses select() constructs executed with await session.execute(), then scalars() for ORM objects."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- Request-scoped session vs per-repository session: tradeoffs.
+- How `selectinload` fixes N+1 for list endpoints.
+- Read replicas: routing depends with separate engines.
+
+Review [Pydantic v2](/learn/python/fastapi/pydantic-v2) for response models with `from_attributes=True`, or [/interview/python](/interview/python) for data-layer design questions.
