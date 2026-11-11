@@ -1,0 +1,124 @@
+---
+title: "Text embeddings and similarity"
+slug: embeddings
+kind: lesson
+track: ai
+module: foundations
+order: 2
+difficulty: intermediate
+prerequisites:
+  - llm-fundamentals
+tags:
+  - embeddings
+  - vectors
+  - cosine
+estimatedMinutes: 17
+lastReviewed: "2026-11-01"
+summary: "Dense vectors represent meaning; cosine similarity ranks neighbors and powers semantic search before full RAG stacks."
+related:
+  - rag
+---
+
+## Why this matters
+
+Keyword search misses paraphrases; embeddings map text into a space where closer vectors mean closer meaning. Every retrieval pipeline — [RAG](/learn/ai/rag/rag), duplicate detection, clustering — depends on picking a model, normalizing vectors, and indexing at scale.
+
+Production concerns: embedding model version pinned, batching for throughput, and distance metric matching what the vector DB expects (cosine versus dot product on L2-normalized vectors).
+
+## Mental model
+
+Pipeline:
+
+1. Chunk or sentence text.
+2. Call embedding API or local model.
+3. Store vector + metadata in a vector index (HNSW, IVF).
+4. Query embedding → top-k neighbors → rerank optional.
+
+**Cosine similarity** on L2-normalized vectors equals dot product. Mixing models between index and query invalidates neighbors.
+
+Dimensionality is fixed per model (e.g. 1536). Metadata filters (tenant ID, doc type) narrow search before vector math.
+
+Batch embedding requests to amortize HTTP overhead; most APIs accept dozens of inputs per call with a byte cap. Cache embeddings for static documents at ingest time instead of recomputing on every query.
+
+Track embedding latency p95 separately from vector search latency so you know whether to scale the encoder service or the index tier. When documents update frequently, version vectors with `content_hash` metadata to skip unchanged chunks during reindex jobs.
+
+Evaluate retrieval with k-fold style held-out questions per domain so tuning does not overfit a single product area.
+
+## Code
+
+```python
+import math
+from typing import Sequence
+
+
+def dot(a: Sequence[float], b: Sequence[float]) -> float:
+    if len(a) != len(b):
+        raise ValueError("length mismatch")
+    total = 0.0
+    for i in range(len(a)):
+        total += a[i] * b[i]
+    return total
+
+
+def l2_norm(v: Sequence[float]) -> float:
+    return math.sqrt(sum(x * x for x in v))
+
+
+def cosine_similarity(a: Sequence[float], b: Sequence[float]) -> float:
+    denom = l2_norm(a) * l2_norm(b)
+    if denom == 0.0:
+        return 0.0
+    return dot(a, b) / denom
+
+
+def main() -> None:
+    query = [0.2, 0.8, 0.1]
+    doc_a = [0.25, 0.75, 0.15]
+    doc_b = [0.9, 0.1, 0.0]
+    print(f"sim_a={cosine_similarity(query, doc_a):.4f}")
+    print(f"sim_b={cosine_similarity(query, doc_b):.4f}")
+
+
+if __name__ == "__main__":
+    main()
+```
+
+Refresh embeddings when the model version changes; reindex in place with dual-write or blue/green indexes.
+
+## Common mistakes
+
+- Comparing cosine scores across different embedding models as if calibrated.
+- Huge chunks that dilute semantics (see [RAG chunking lab](/labs/rag-chunking)).
+- Missing normalization when the database assumes unit vectors.
+- Ignoring multilingual behavior when documents mix languages.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "Vectors are L2-normalized. Cosine similarity equals which operation?",
+      choices: ["Euclidean distance", "Dot product", "Hamming distance", "Jaccard index"],
+      answer: 1,
+      explanation: "For unit vectors, cosine similarity is the dot product."
+    },
+    {
+      prompt: "You swap embedding models without reindexing. What breaks?",
+      choices: [
+        "Nothing, vectors are universal",
+        "Neighbor rankings no longer align with the new geometry",
+        "Only GPU memory",
+        "Tokenizer only"
+      ],
+      answer: 1,
+      explanation: "Different models map text to incomparable spaces; queries must use the same model as the index."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- "How do you evaluate embedding quality before building RAG?"
+- Follow-up: "Hybrid search: when add BM25?"
+
+Next: [RAG](/learn/ai/rag/rag). Review [LLM fundamentals](/learn/ai/foundations/llm-fundamentals) for token budgeting on embedding batch calls.

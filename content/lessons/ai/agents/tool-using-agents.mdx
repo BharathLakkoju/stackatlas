@@ -1,0 +1,137 @@
+---
+title: "Tool-using LLM agents"
+slug: tool-using-agents
+kind: lesson
+track: ai
+module: agents
+order: 5
+difficulty: intermediate
+prerequisites:
+  - langgraph-vs-langchain
+tags:
+  - agents
+  - tools
+  - function-calling
+estimatedMinutes: 18
+lastReviewed: "2026-11-01"
+summary: "Expose typed tools with schemas, validate arguments, and cap autonomy — agents are controllers, not unconstrained shells."
+related:
+  - evals-guardrails
+---
+
+## Why this matters
+
+Tools turn LLMs into controllers: search tickets, run SQL with guardrails, call payment APIs. Without strict schemas, argument hallucination becomes `DELETE` statements. Production agents log every tool call, enforce timeouts, redact secrets from prompts, and require human approval on irreversible actions.
+
+Build on [LangGraph vs LangChain](/learn/ai/agents/langgraph-vs-langchain) patterns so loops are bounded and checkpointed.
+
+## Mental model
+
+Loop:
+
+1. Model receives tools list (JSON Schema).
+2. Model emits `tool_call` with name + arguments.
+3. Runtime validates, executes, returns structured result.
+4. Model continues until final natural language answer.
+
+Safety layers: allowlist tool names, sandbox network egress, per-tool rate limits, simulate in staging with recorded fixtures.
+
+Return compact JSON from tools; summarize large payloads before the model sees them. Record tool latency separately from model latency so dashboards show whether slowness is network or inference.
+
+Describe each tool in plain language with required fields called out; models choose more reliably when examples accompany the schema. Dry-run destructive tools in a shadow mode that logs intent without executing until eval pass rates stabilize.
+
+Align tool names with observability dashboards so on-call engineers can filter failures by `lookup_order` versus `charge_card` without reading raw JSON payloads.
+
+Publish a catalog page listing every tool, its risk class, and owning team so product managers know what autonomy the agent actually has.
+
+## Code
+
+```python
+import json
+from dataclasses import dataclass
+from typing import Any, Callable
+
+
+@dataclass(frozen=True)
+class Tool:
+    name: str
+    description: str
+    handler: Callable[[dict[str, Any]], str]
+
+
+def run_agent(user_goal: str, tools: dict[str, Tool]) -> str:
+    planned_name = "lookup_order"
+    args = {"order_id": "A100"}
+    tool = tools.get(planned_name)
+    if tool is None:
+        return "error: unknown tool"
+    result = tool.handler(args)
+    return f"goal={user_goal} tool={planned_name} result={result}"
+
+
+def lookup_order(args: dict[str, Any]) -> str:
+    order_id = str(args.get("order_id", ""))
+    if not order_id:
+        return json.dumps({"error": "missing order_id"})
+    return json.dumps({"order_id": order_id, "status": "shipped"})
+
+
+def main() -> None:
+    tools = {
+        "lookup_order": Tool(
+            name="lookup_order",
+            description="Fetch order status by id",
+            handler=lookup_order,
+        )
+    }
+    print(run_agent("Where is my package?", tools))
+
+
+if __name__ == "__main__":
+    main()
+```
+
+Wire real models through provider tool-calling APIs; keep business logic in small Python functions you unit-test without the LLM.
+
+## Common mistakes
+
+- Passing raw SQL strings from the model without parameterized queries.
+- Tools that return unbounded payloads (blow context, leak data).
+- No max tool steps → runaway loops and cost.
+- Logging PII from tool arguments in plaintext.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "Why validate tool arguments before execution?",
+      choices: [
+        "Models never hallucinate parameters",
+        "Schema enforcement blocks invalid or malicious shapes",
+        "Validation removes need for auth",
+        "JSON Schema disables streaming"
+      ],
+      answer: 1,
+      explanation: "Validation catches wrong types, missing fields, and out-of-range values before side effects."
+    },
+    {
+      prompt: "Irreversible refund tool in production. Typical guardrail?",
+      choices: [
+        "Hide tool from logs",
+        "Human approval step or role-gated tool",
+        "Raise temperature",
+        "Disable timeouts"
+      ],
+      answer: 1,
+      explanation: "High-impact tools need approval, RBAC, or policy checks beyond model discretion."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- "How do you test agents without live API calls?"
+- Follow-up: "Difference between MCP servers and in-process tools?"
+
+Ship with [Evals and guardrails](/learn/ai/production/evals-guardrails) and revisit [RAG](/learn/ai/rag/rag) when tools wrap retrieval.

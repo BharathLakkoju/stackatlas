@@ -1,0 +1,94 @@
+---
+title: "RAG evaluation in production is a product discipline"
+slug: rag-evaluation-in-production
+kind: blog
+track: ai
+tags:
+  - rag
+  - evals
+  - mlops
+estimatedMinutes: 13
+lastReviewed: "2026-11-01"
+summary: "Offline recall@k is necessary but not sufficient—ship RAG with layered metrics, golden sets, and regression gates tied to chunking and prompts."
+related:
+  - rag
+  - evals-guardrails
+---
+
+Teams ship retrieval-augmented generation because “the model does not know our docs.” Within a sprint they have a vector index, a slick demo, and silent failures in production: right-ish tone, wrong paragraph, confident citation to irrelevant text. **RAG quality is an evaluation problem**, not a single embedding swap.
+
+## The failure stack
+
+Failures split cleanly; mixing them in one metric hides fixes:
+
+1. **Retrieval miss** — correct answer never entered the prompt (recall@k).
+2. **Context noise** — correct chunk drowned by neighbors (precision / reranker).
+3. **Ungrounded generation** — model improvises despite good chunks (faithfulness).
+4. **Policy** — injection via retrieved HTML steers the model (guardrails).
+
+Production evals need labels per layer. Our [evals & guardrails](/learn/ai/evals-guardrails) lesson treats them separately; this post describes how we operationalize that.
+
+## Golden sets are contracts
+
+A golden set is a versioned table: `question`, optional `gold_chunk_ids`, `reference_answer`, `tags`. It is owned like an API schema.
+
+Rules we enforce:
+
+- Questions come from real support tickets, sales calls, and search logs—not paraphrases of doc headings only.
+- Annotators mark **which span** supports the answer when possible, not just “doc id.”
+- Every index rebuild, embedding model change, or chunker tweak runs the same golden set in CI.
+
+When [rag-chunking](/labs/rag-chunking) moves average chunk size, recall@k on the golden set must not regress beyond an agreed threshold—or you document accepted tradeoffs (smaller chunks help factoids, hurt summaries).
+
+## Offline metrics that survive contact with reality
+
+| Metric | Catches | Blind spot |
+|--------|---------|------------|
+| recall@k | Missed retrieval | Bad text with high score |
+| MRR / nDCG | Ranking quality | Generator still hallucinates |
+| Faithfulness / groundedness | Unsupported claims | Fluent wrong tone |
+| Citation match | Broken references | Correct but unhelpful prose |
+
+LLM-as-judge is useful at scale but **calibrated against human spot checks**. We run weekly human review on a random slice; drift in judge scores without human movement triggers recalibration.
+
+Latency and cost belong on the scorecard too—see [/tools/llm-cost](/tools/llm-cost). A perfect answer within 12s at $0.40 may lose to a good-enough answer at $0.04 for internal tools.
+
+## Online signals without fooling yourself
+
+Thumbs up/down, “report incorrect,” and escalation to human support lag behind deploys but catch distribution shift. Pair them with:
+
+- **Abstain rate** when retrieval is empty (model should not invent).
+- **Click-through on citations** (do users trust sources?).
+- **Edit distance** when users copy answers into tickets (heavy editing = low task success).
+
+Sudden spikes in injection attempts (prompt in retrieved wiki page) route to [evals guardrails](/learn/ai/evals-guardrails), not just moderation.
+
+## Regression gates in the release path
+
+Our pipeline blocks promote when:
+
+1. Golden retrieval recall@5 drops > X% vs baseline branch.
+2. Faithfulness score drops > Y on a frozen prompt version.
+3. P99 latency exceeds budget on a canned load test.
+
+Prompt changes are semver’d (`prompts/rag-v3.2.yaml`). Index changes carry `embedding_model` and `chunk_policy` metadata so dashboards compare apples to apples.
+
+## Hybrid search and eval honesty
+
+When you add BM25 + vectors ([hybrid search](/interview/ai/ai-hybrid-search)), offline evals must include queries with SKUs and error codes lexical search fixes. Otherwise you optimize cosine similarity on paraphrases alone while production users type `ERR_CONNECTION_RESET`.
+
+## What good enough looks like
+
+Perfection is unrealistic; **bounded risk** is not. Document:
+
+- Topics you refuse (legal, medical) without human review.
+- Maximum staleness of indexed docs.
+- When to route to non-RAG tools (live DB lookup).
+
+Link compare decisions explicitly—e.g. [LangChain vs LangGraph](/compare/langchain-vs-langgraph) affects how you trace multi-step tool loops in eval logs.
+
+## Close the loop
+
+Postmortem every high-profile wrong answer: retrieval miss or generation? Fix chunking, reranker, prompt, or policy—not “try GPT-N+1” by default. [/contribute](/contribute) welcomes golden questions (sanitized) that expose real gaps.
+
+RAG in production is a **measured loop**: ingest → retrieve → generate → observe → adjust chunking and prompts → re-run golden sets. Treat that loop as product infrastructure, and demos stop lying on the first customer query.
