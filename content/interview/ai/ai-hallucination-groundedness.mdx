@@ -1,0 +1,35 @@
+---
+title: "Hallucination and groundedness"
+slug: ai-hallucination-groundedness
+kind: interview
+track: ai
+difficulty: intermediate
+tags:
+  - quality
+  - rag
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Require citations, abstain when context empty, and measure faithfulness in eval pipelines."
+related:
+  - rag
+  - evals-guardrails
+followUps:
+  - "Temperature?"
+  - "Citation format?"
+---
+How do you reduce hallucinations in grounded QA?
+
+## Model answer
+
+Instruct model to answer only from context and say I don't know if insufficient. Enforce citation spans tied to chunk ids; post-check that cited text supports claim (NLI or string match). Lower temperature for factual QA. Retrieve enough context but not noise. Rerank to improve precision. Eval faithfulness metric in CI. Show sources in UI so users verify. Fine-tune refusal behavior on empty retrieval.
+
+
+## Follow-ups
+
+### Temperature?
+
+Temperature 0–0.3 for factual; higher for creative tasks.
+
+### Citation format?
+
+Structured citations [{chunkId, quote}] ease verification.

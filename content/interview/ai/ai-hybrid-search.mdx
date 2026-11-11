@@ -1,0 +1,35 @@
+---
+title: "Hybrid search"
+slug: ai-hybrid-search
+kind: interview
+track: ai
+difficulty: intermediate
+tags:
+  - search
+  - rag
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Combine dense embeddings with BM25 for SKU, acronym, and rare token coverage."
+related:
+  - embeddings
+  - rag
+followUps:
+  - "RRF fusion?"
+  - "Alpha tuning?"
+---
+Why add keyword search to vector RAG?
+
+## Model answer
+
+Embeddings miss exact token matches—IDs, SKUs, acronyms, rare names. BM25 excels lexical overlap. Hybrid runs both retrievers, merges with reciprocal rank fusion or weighted score. Tune alpha on dev queries. Store sparse vectors in same engine (OpenSearch, pgvector+tsvector) when possible. Log which leg hit for debugging. Hybrid especially helps enterprise glossaries and error codes.
+
+
+## Follow-ups
+
+### RRF fusion?
+
+RRF robust without normalizing incomparable scores.
+
+### Alpha tuning?
+
+Grid search alpha on labeled qrels.
