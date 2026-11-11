@@ -1,0 +1,37 @@
+---
+title: "Design a notification system"
+slug: system-design-notification-system
+kind: interview
+track: system-design
+difficulty: intermediate
+tags:
+  - messaging
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Kafka ingest, templates, channel workers, idempotency, DLQ."
+related:
+  - scalability-fundamentals
+followUps:
+  - "Deduplication?"
+  - "Priority lanes?"
+---
+Email, push, SMS for product events.
+
+## Model answer
+
+Event → orchestrator loads preferences, renders template, enqueues per channel.
+
+Workers call SES/FCM/Twilio with retries and DLQ.
+
+Idempotency keys skip duplicate sends under at-least-once delivery.
+
+
+## Follow-ups
+
+### Deduplication?
+
+Store processed idempotency hash 24-72h.
+
+### Priority lanes?
+
+Separate critical vs marketing queues.

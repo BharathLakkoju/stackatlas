@@ -1,0 +1,38 @@
+---
+title: "Design a news feed"
+slug: system-design-news-feed
+kind: interview
+track: system-design
+difficulty: intermediate
+tags:
+  - feeds
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Fan-out on write vs read; hybrid for celebrities; ranking and pagination."
+related:
+  - scalability-fundamentals
+  - caching
+followUps:
+  - "Celebrity users?"
+  - "Ranking freshness?"
+---
+Design home feed of posts from followees.
+
+## Model answer
+
+Posts table; follows graph. Fan-out on write pushes post ids into follower feed caches—fast reads, costly for mega-followers.
+
+Fan-out on read merges timelines at request—cheap writes, heavy reads.
+
+Hybrid: fan-out normal users; merge celebrities at read. Rank blend recency + engagement; cursor pagination.
+
+
+## Follow-ups
+
+### Celebrity users?
+
+No fan-out for celebrity posts; merge on read.
+
+### Ranking freshness?
+
+Score = weighted recency + engagement with decay.
