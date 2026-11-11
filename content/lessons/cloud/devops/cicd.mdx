@@ -1,0 +1,118 @@
+---
+title: "CI/CD pipelines for cloud services"
+slug: cicd
+kind: lesson
+track: cloud
+module: devops
+order: 6
+difficulty: intermediate
+prerequisites:
+  - docker-multistage
+  - iam
+tags:
+  - cicd
+  - github-actions
+  - deploy
+estimatedMinutes: 18
+lastReviewed: "2026-11-01"
+summary: "Build, test, scan, and promote artifacts with short-lived cloud credentials — not manual docker pushes from laptops."
+related:
+  - lambda-api-gateway
+---
+
+## Why this matters
+
+Shipping weekly without automation invites configuration drift. A solid pipeline runs unit tests, builds the [multi-stage Docker](/learn/cloud/docker/docker-multistage) image, scans for CVEs, pushes to a registry with an immutable digest, and deploys to staging before production approval. **[IAM](/learn/cloud/aws/iam)** OIDC trust to GitHub Actions or GitLab replaces long-lived `AWS_ACCESS_KEY_ID` secrets in CI.
+
+Rollback must be one command: redeploy the previous digest or Lambda version alias.
+
+## Mental model
+
+Stages:
+
+1. **Verify**: lint, unit tests, contract tests.
+2. **Build**: reproducible artifact (jar, image, zip).
+3. **Scan**: Trivy, ECR scan, SBOM upload.
+4. **Publish**: tag with git SHA, sign if required.
+5. **Deploy**: blue/green, canary, or CloudFormation change set.
+6. **Observe**: smoke tests, synthetic checks, alarm on error rate.
+
+Secrets: use OIDC `role-to-assume` per environment; separate roles for staging and prod with approval gates.
+
+## Code
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+IMAGE_NAME="stackatlas/api"
+GIT_SHA="$(git rev-parse --short HEAD)"
+REGISTRY="123456789012.dkr.ecr.us-east-1.amazonaws.com"
+FULL_TAG="${REGISTRY}/${IMAGE_NAME}:${GIT_SHA}"
+
+npm test
+docker build -t "${FULL_TAG}" .
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin "${REGISTRY}"
+docker push "${FULL_TAG}"
+docker scout cves "${FULL_TAG}" || true
+
+aws ecs update-service \
+  --cluster stackatlas-staging \
+  --service api \
+  --force-new-deployment
+
+echo "Deployed ${FULL_TAG}"
+```
+
+Gate production on manual approval and automated smoke tests against `/actuator/health`. For Lambda flows, publish a version and shift alias weights instead of rebuilding infra.
+
+Store pipeline definitions in git, pin third-party action SHAs, and separate build secrets per environment. Feature flags decouple deploy from release so CI can ship artifacts daily while product toggles stay off until metrics look healthy.
+
+Attach SBOMs and git metadata labels to every image manifest so security tools can trace CVEs to source commits. Run database migrations as an explicit pipeline stage with backups verified, not as a silent pre-deploy hook that can half-apply schema changes.
+
+Keep deploy notifications in the same channel as on-call paging so failed smoke tests get acknowledged before the next pipeline stage promotes artifacts upstream.
+
+Record mean time to restore from the last three rollbacks so leadership sees whether pipeline investment actually reduces incident duration.
+
+## Common mistakes
+
+- Skipping tests when "only Dockerfile changed".
+- Promoting `latest` instead of immutable digests.
+- Shared prod credentials in forkable public repos.
+- No rollback drill — first incident becomes panic.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "GitHub Actions deploying to AWS without static keys. Preferred auth?",
+      choices: [
+        "Root user access keys in secrets",
+        "OIDC federation assuming a least-privilege IAM role",
+        "Embed keys in Dockerfile",
+        "Disable IAM"
+      ],
+      answer: 1,
+      explanation: "OIDC lets CI assume roles with short-lived credentials tied to repository identity."
+    },
+    {
+      prompt: "Why tag images with git SHA instead of only latest?",
+      choices: [
+        "SHA disables caching",
+        "Enables traceable rollback to exact artifact",
+        "AWS requires SHA format",
+        "Latest is immutable in ECR"
+      ],
+      answer: 1,
+      explanation: "Immutable digests or SHAs map deployments to source for audit and rollback."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- "How do you separate staging and production blast radius in CI?"
+- Follow-up: "Canary versus blue/green for ECS?"
+
+Connect to [Lambda API Gateway](/learn/cloud/aws/lambda-api-gateway) deploy hooks and review [Docker multistage](/learn/cloud/docker/docker-multistage) for build cache strategy.

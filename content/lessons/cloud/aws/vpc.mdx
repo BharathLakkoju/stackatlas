@@ -1,0 +1,121 @@
+---
+title: "AWS VPC networking essentials"
+slug: vpc
+kind: lesson
+track: cloud
+module: aws
+order: 5
+difficulty: intermediate
+prerequisites:
+  - iam
+tags:
+  - vpc
+  - subnets
+  - security-groups
+estimatedMinutes: 17
+lastReviewed: "2026-11-01"
+summary: "Place workloads in public or private subnets, route through gateways, and enforce security groups as stateful firewalls."
+related:
+  - lambda-api-gateway
+---
+
+## Why this matters
+
+Every RDS instance, internal microservice, and bastion-less admin path lives inside a VPC. Wrong CIDR overlap blocks peering with partners; NAT gateway costs dominate small environments; security groups misconfigured as "allow all egress" still leave you exposed when combined with overly broad ingress from `0.0.0.0/0`.
+
+Lambda in a VPC needs subnets with enough IPs for elastic network interfaces — plan `/24` private subnets per AZ.
+
+## Mental model
+
+Building blocks:
+
+- **VPC**: isolated network with CIDR (e.g. `10.0.0.0/16`).
+- **Subnets**: AZ-scoped slices; public ones route `0.0.0.0/0` to an Internet Gateway; private ones use NAT for outbound.
+- **Route tables**: bind subnets to IGW, NAT, VPC endpoints.
+- **Security groups**: stateful allow rules on ENIs (not CIDR across the whole VPC by default).
+- **NACLs**: stateless subnet fences (use sparingly).
+
+**VPC endpoints** (Gateway for S3/DynamoDB, Interface for other APIs) keep traffic off the public internet and reduce NAT spend.
+
+## Code
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+VPC_CIDR="10.20.0.0/16"
+PUBLIC_CIDR="10.20.1.0/24"
+AZ="us-east-1a"
+
+VPC_ID=$(aws ec2 create-vpc --cidr-block "${VPC_CIDR}" --query 'Vpc.VpcId' --output text)
+aws ec2 create-tags --resources "${VPC_ID}" --tags Key=Name,Value=stackatlas-demo
+
+SUBNET_ID=$(aws ec2 create-subnet \
+  --vpc-id "${VPC_ID}" \
+  --cidr-block "${PUBLIC_CIDR}" \
+  --availability-zone "${AZ}" \
+  --query 'Subnet.SubnetId' --output text)
+
+SG_ID=$(aws ec2 create-security-group \
+  --group-name stackatlas-app \
+  --description "App ingress" \
+  --vpc-id "${VPC_ID}" \
+  --query 'GroupId' --output text)
+
+aws ec2 authorize-security-group-ingress \
+  --group-id "${SG_ID}" \
+  --protocol tcp \
+  --port 443 \
+  --cidr 10.20.0.0/16
+
+echo "vpc=${VPC_ID} subnet=${SUBNET_ID} sg=${SG_ID}"
+```
+
+Production stacks use IaC (CloudFormation, CDK, Terraform) with three AZs, private subnets for data planes, and **[IAM](/learn/cloud/aws/iam)** roles for interface endpoint policies.
+
+Flow logs to S3 or CloudWatch help debug asymmetric routing. When peering VPCs, verify CIDR summaries do not overlap partner networks; use separate RFC1918 ranges per environment to keep VPN and Direct Connect designs simple.
+
+PrivateLink and interface endpoints reduce data-processing charges for SaaS integrations that would otherwise hairpin through the public internet. Document which subnets host managed services (RDS, ElastiCache) so application teams do not accidentally place stateless tiers in the same failure domain without autoscaling headroom.
+
+## Common mistakes
+
+- Single-AZ private subnet for RDS multi-AZ expectations.
+- Opening SSH from `0.0.0.0/0` instead of SSM Session Manager.
+- Forgetting DNS hostnames/support on the VPC for internal service discovery.
+- Assuming security group "allow all outbound" replaces application-layer auth.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "Private subnet instances need outbound internet for package updates. Typical path?",
+      choices: [
+        "Internet Gateway attached to private subnet directly",
+        "NAT gateway in a public subnet with route 0.0.0.0/0",
+        "Disable updates",
+        "Peering only"
+      ],
+      answer: 1,
+      explanation: "Private subnets route internet-bound traffic through NAT in a public subnet."
+    },
+    {
+      prompt: "Security groups are stateful. What does that imply for return traffic?",
+      choices: [
+        "Must add separate inbound rule for every reply port",
+        "Allowed response traffic for established connections is permitted",
+        "Only UDP is stateful",
+        "NACLs handle state instead"
+      ],
+      answer: 1,
+      explanation: "Return traffic matching an allowed outbound connection is implicitly permitted."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- "How do you connect Lambda in a VPC to S3 without NAT?"
+- Follow-up: "Transit Gateway vs VPC peering?"
+
+See [Lambda and API Gateway](/learn/cloud/aws/lambda-api-gateway) for VPC-attached functions and the [cloud interview guide](/interview/cloud).

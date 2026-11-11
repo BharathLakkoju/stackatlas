@@ -1,0 +1,133 @@
+---
+title: "One-dimensional dynamic programming"
+slug: dp-1d
+kind: lesson
+track: dsa
+module: dynamic-programming
+order: 6
+difficulty: intermediate
+prerequisites:
+  - sliding-window
+  - bfs-dfs
+root: false
+tags:
+  - dynamic-programming
+  - memoization
+  - tabulation
+estimatedMinutes: 18
+lastReviewed: "2026-11-01"
+summary: "Define dp[i], relate it to smaller indices, and fill a 1D table. Classic stairs, house robber, and coin change sketches."
+related:
+  - sliding-window
+---
+
+## Why this matters
+
+When the best answer for position `i` depends only on **earlier** states `i-1`, `i-2`, or a small window, you can replace exponential recursion with linear DP. Interviewers want you to state the recurrence, base cases, and whether you need the full table or just the last two values.
+
+1D DP differs from sliding window: the object is often **non-contiguous** (take or skip elements) or counting paths, not maintaining one valid segment.
+
+## Mental model
+
+Write `dp[i]` as the optimal value (or count) for the prefix ending at `i` (or “first `i` items”). List transitions: where could the last decision come from? If only `i-1` and `i-2` matter, you have a Fibonacci-style recurrence. If choices are “pick index `j` before `i`,” you may still end linear if `j` is bounded (e.g., `j = i-1` or `i-2`).
+
+Computation order: left to right. Space optimization: keep two scalars instead of the full array when the recurrence width is 1.
+
+## Code
+
+```ts
+function climbStairs(n: number): number {
+  if (n <= 2) {
+    return n;
+  }
+  let prev2 = 1;
+  let prev1 = 2;
+  for (let i = 3; i <= n; i += 1) {
+    const current = prev1 + prev2;
+    prev2 = prev1;
+    prev1 = current;
+  }
+  return prev1;
+}
+
+function robLinear(nums: number[]): number {
+  if (nums.length === 0) {
+    return 0;
+  }
+  if (nums.length === 1) {
+    return nums[0];
+  }
+  let skip = nums[0];
+  let take = Math.max(nums[0], nums[1]);
+  for (let i = 2; i < nums.length; i += 1) {
+    const nextTake = nums[i] + skip;
+    const nextSkip = Math.max(take, skip);
+    skip = nextSkip;
+    take = nextTake;
+  }
+  return Math.max(take, skip);
+}
+
+function coinChangeMinCoins(coins: number[], amount: number): number {
+  const impossible = amount + 1;
+  const dp = new Array<number>(amount + 1).fill(impossible);
+  dp[0] = 0;
+  for (let a = 1; a <= amount; a += 1) {
+    for (const c of coins) {
+      if (c <= a) {
+        const candidate = dp[a - c] + 1;
+        if (candidate < dp[a]) {
+          dp[a] = candidate;
+        }
+      }
+    }
+  }
+  return dp[amount] === impossible ? -1 : dp[amount];
+}
+```
+
+`climbStairs` is `O(n)` time, `O(1)` space. `robLinear` is `O(n)` time, `O(1)` space. `coinChangeMinCoins` is `O(amount * coins.length)` time and `O(amount)` space — unbounded knapsack style on the amount dimension.
+
+## Common mistakes
+
+- Recursing without memoization on overlapping subproblems — time explodes.
+- Wrong base cases (`dp[0]` meaning “zero items” vs “zero amount” in coin change).
+- Using 1D DP when the problem needs **two dimensions** (two strings, two indices) — you may be forcing the wrong state.
+- Confusing “maximum subarray sum” (Kadane, `O(n)`) with “maximum non-adjacent sum” (house robber DP).
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "House robber on a line: why track both 'take' and 'skip' at each index?",
+      choices: [
+        "To sort houses by value",
+        "Robbing index i forbids i-1, so optimal at i branches on whether i is robbed",
+        "DFS needs two stacks",
+        "Coins can be reused"
+      ],
+      answer: 1,
+      explanation: "If you rob i, you add nums[i] to the best total that ended before i-1; if you skip, you carry the best up through i-1."
+    },
+    {
+      prompt: "Coin change (minimum coins) with unlimited supply: inner loop order coins then amounts means?",
+      choices: [
+        "Each coin used at most once",
+        "dp[a] can combine the same coin denomination repeatedly",
+        "Graph BFS on coins",
+        "Only greedy works"
+      ],
+      answer: 1,
+      explanation: "Trying all coins for each amount allows using the same denomination multiple times to build a."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- “Decode ways” / climbing stairs — same recurrence, different story.
+- “Maximum product subarray” — may need two states (max and min) because negatives flip.
+- When the constraint is purely a **contiguous** window, compare with [Sliding window](/learn/dsa/patterns/sliding-window) before committing to DP.
+
+Solidify 1D transitions here, then revisit [Sliding window](/learn/dsa/patterns/sliding-window) when the optimum is a single segment rather than a take-or-skip sequence.

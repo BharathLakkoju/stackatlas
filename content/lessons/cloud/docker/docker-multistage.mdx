@@ -1,0 +1,109 @@
+---
+title: "Multi-stage Docker builds"
+slug: docker-multistage
+kind: lesson
+track: cloud
+module: docker
+order: 4
+difficulty: intermediate
+prerequisites: []
+root: true
+tags:
+  - docker
+  - images
+  - supply-chain
+estimatedMinutes: 16
+lastReviewed: "2026-11-01"
+summary: "Compile in a builder stage, ship a slim runtime image, and scan what actually lands in production registries."
+related:
+  - cicd
+---
+
+## Why this matters
+
+A single-stage Java or Node image that includes compilers and devDependencies bloats pull times, expands attack surface, and slows [CI/CD](/learn/cloud/devops/cicd) pipelines. Multi-stage Dockerfiles separate **build** from **run**: only artifacts and runtime libraries reach the registry tag you deploy.
+
+Layer caching matters: order instructions from least to most frequently changing, and pin base image digests in security-sensitive pipelines.
+
+## Mental model
+
+Stages are independent filesystems linked by `COPY --from=builder`. Typical flow:
+
+1. **deps** stage: install modules with lockfiles.
+2. **build** stage: compile or bundle.
+3. **runtime** stage: distroless or slim JRE, non-root user, healthcheck, expose port.
+
+Use `.dockerignore` to keep `node_modules` and `target/` out of the build context. SBOM and image signing (Sigstore, Notation) attach provenance before promotion to prod.
+
+## Code
+
+```dockerfile
+FROM eclipse-temurin:21-jdk-alpine AS build
+WORKDIR /app
+COPY gradlew build.gradle settings.gradle ./
+COPY gradle ./gradle
+COPY src ./src
+RUN chmod +x gradlew && ./gradlew bootJar --no-daemon
+
+FROM eclipse-temurin:21-jre-alpine AS runtime
+RUN adduser -D -h /app appuser
+WORKDIR /app
+COPY --from=build /app/build/libs/app.jar ./app.jar
+USER appuser
+EXPOSE 8080
+HEALTHCHECK CMD wget -qO- http://127.0.0.1:8080/actuator/health || exit 1
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+```
+
+Build with `docker build -t stackatlas/api:1.0 .`. Push to ECR after `aws ecr get-login-password` in your pipeline. Pair with [IAM](/learn/cloud/aws/iam) roles for CI runners instead of static registry passwords.
+
+Use BuildKit cache mounts for dependency downloads (`RUN --mount=type=cache`) so CI rebuilds stay fast. Scan images in the registry gate before promotion; failing Critical CVEs without fixes should block deploy until base images update.
+
+Document base image update cadence in the platform runbook; distroless and alpine tags still receive security patches. Pin OS packages in the runtime stage only when compliance requires reproducibility, otherwise rebuild weekly from refreshed parents.
+
+Multi-arch builds (`docker buildx build --platform linux/amd64,linux/arm64`) keep Graviton and laptop dev environments aligned on the same Dockerfile contract.
+
+Set `DOCKER_BUILDKIT=1` in CI so cache and mount features stay enabled by default across runners. Label images with `org.opencontainers.image.revision` for traceability.
+
+## Common mistakes
+
+- Copying entire repo before dependency install (cache bust on every commit).
+- Running as root in the runtime stage.
+- Installing `curl` for healthchecks without removing it, or skipping HEALTHCHECK entirely.
+- Using `latest` tags in production deploy manifests.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "Primary benefit of multi-stage builds for a Spring Boot service?",
+      choices: [
+        "Larger images for debugging",
+        "JDK stays in production image",
+        "Runtime image excludes compiler and build-only layers",
+        "Disables layer caching"
+      ],
+      answer: 2,
+      explanation: "Only the JAR and JRE land in the final stage, shrinking size and attack surface."
+    },
+    {
+      prompt: "COPY --from=build copies files from where?",
+      choices: [
+        "Host machine only",
+        "Named or numbered earlier build stage",
+        "Kubernetes secret",
+        "Docker Hub automatically"
+      ],
+      answer: 1,
+      explanation: "--from references a previous stage filesystem in the same Dockerfile build."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- "How do you speed up rebuilds when only application code changes?"
+- Follow-up: "Distroless versus alpine JRE tradeoffs?"
+
+Ship images through [CI/CD](/learn/cloud/devops/cicd) and compare orchestrators at [ECS vs EKS](/compare/ecs-vs-eks).
