@@ -1,0 +1,38 @@
+---
+title: "Design a rate limiter"
+slug: system-design-rate-limiter
+kind: interview
+track: system-design
+difficulty: intermediate
+tags:
+  - rate-limiting
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Token bucket in Redis; gateway enforcement; 429 + Retry-After."
+related:
+  - rate-limiting
+  - load-balancing
+followUps:
+  - "Sliding vs token bucket?"
+  - "Per-tenant quotas?"
+---
+Distributed rate limiter per API key.
+
+## Model answer
+
+Token bucket allows burst with average rate. Redis Lua atomically refills and decrements per key.
+
+Enforce at API gateway; 429 on deny. Regional Redis or per-region limits for multi-region.
+
+Fail closed for payments; configurable per tier.
+
+
+## Follow-ups
+
+### Sliding vs token bucket?
+
+Sliding window more precise; token bucket smoother bursts.
+
+### Per-tenant quotas?
+
+Quota profiles in config service keyed by tenant.

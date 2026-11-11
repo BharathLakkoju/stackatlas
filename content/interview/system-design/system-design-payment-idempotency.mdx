@@ -1,0 +1,37 @@
+---
+title: "Payment idempotency"
+slug: system-design-payment-idempotency
+kind: interview
+track: system-design
+difficulty: intermediate
+tags:
+  - payments
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Idempotency-Key header, durable mapping, PSP alignment, reconciliation."
+related:
+  - url-shortener
+followUps:
+  - "Double charge?"
+  - "Partial failure?"
+---
+Prevent double charge on retried payment API calls.
+
+## Model answer
+
+Client sends Idempotency-Key; server unique-insert PENDING row before PSP call; duplicate key returns same response body.
+
+Mark CAPTURED/FAILED atomically with ledger row. PSP webhooks idempotent on payment intent id.
+
+Nightly reconciliation vs PSP reports.
+
+
+## Follow-ups
+
+### Double charge?
+
+Unique key + terminal state blocks second charge.
+
+### Partial failure?
+
+Saga: void auth if capture fails after auth.
