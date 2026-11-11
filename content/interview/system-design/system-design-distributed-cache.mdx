@@ -1,0 +1,38 @@
+---
+title: "Design a distributed cache"
+slug: system-design-distributed-cache
+kind: interview
+track: system-design
+difficulty: intermediate
+tags:
+  - caching
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Consistent hashing, TTL, cache-aside, stampede protection."
+related:
+  - caching
+  - load-balancing
+followUps:
+  - "Hot keys?"
+  - "Invalidation?"
+---
+Shared cache for stateless app tier.
+
+## Model answer
+
+Cache-aside: read Redis; miss load DB set TTL. Write DB then invalidate key.
+
+Consistent hash shards; optional replica per shard.
+
+Single-flight lock on miss prevents stampede.
+
+
+## Follow-ups
+
+### Hot keys?
+
+Replicate hot key or local micro-cache.
+
+### Invalidation?
+
+Delete-on-write; versioned keys for coherence.

@@ -1,0 +1,37 @@
+---
+title: "Design a chat system"
+slug: system-design-chat
+kind: interview
+track: system-design
+difficulty: intermediate
+tags:
+  - messaging
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "WebSockets, durable messages, ordering, offline inbox, idempotent sends."
+related:
+  - scalability-fundamentals
+followUps:
+  - "Large groups?"
+  - "End-to-end encryption?"
+---
+Design real-time chat with 1:1 and groups.
+
+## Model answer
+
+Clients WebSocket to connection tier; persist messages with server ids; fan-out to online users via connection registry.
+
+Ordering per room by server sequence. Client_msg_id dedupes retries.
+
+Offline: sync on reconnect from last acked seq. Push for mobile offline.
+
+
+## Follow-ups
+
+### Large groups?
+
+Cap group size; broadcast channels use pub/sub backbone.
+
+### End-to-end encryption?
+
+E2EE limits search/moderation; keys stay on clients.
