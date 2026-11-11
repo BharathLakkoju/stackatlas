@@ -1,0 +1,35 @@
+---
+title: "GIL implications"
+slug: python-gil-implications
+kind: interview
+track: python
+difficulty: intermediate
+tags:
+  - gil
+  - concurrency
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Why CPU-bound Python threads do not parallelize bytecode and when asyncio or multiprocessing wins."
+related:
+  - gil
+  - async-await
+followUps:
+  - "Free-threading Python?"
+  - "C extensions?"
+---
+What is the GIL and how does it affect threading?
+
+## Model answer
+
+The Global Interpreter Lock is a mutex protecting CPython bytecode execution—only one thread runs Python opcodes at a time. I/O-bound threads still help because blocking syscalls release the GIL. CPU-bound pure Python does not scale across cores with threads; use multiprocessing, C/Rust extensions, or numpy which releases GIL in C loops. asyncio gives single-thread concurrency without preemption races for I/O. Choosing model: profile; do not spawn 32 threads for numeric loops. PEP 703 optional nogil builds change story on newer versions—mention awareness.
+
+
+## Follow-ups
+
+### Free-threading Python?
+
+Optional free-threaded builds reduce GIL impact but ecosystem catching up.
+
+### C extensions?
+
+NumPy/pandas C code releases GIL during heavy numerical work.

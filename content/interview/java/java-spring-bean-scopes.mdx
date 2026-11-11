@@ -1,0 +1,34 @@
+---
+title: "Spring bean scopes"
+slug: java-spring-bean-scopes
+kind: interview
+track: java
+difficulty: intermediate
+tags:
+  - spring
+  - ioc
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "singleton default, prototype new instance, request/session in web contexts."
+related:
+  - spring-ioc
+followUps:
+  - "Prototype injection into singleton?"
+  - "@Configuration proxy?"
+---
+Explain Spring scopes and a common prototype pitfall.
+
+## Model answer
+
+singleton: one per ApplicationContext—default for stateless services. prototype: new bean per injection or getBean. request/session: web-only lifecycle bound to HTTP scope. Pitfall: injecting prototype into singleton gives one prototype instance created at singleton init unless @Lookup or ObjectProvider refreshes per call. @Configuration classes are CGLIB-proxied so @Bean method intercept calls—singleton semantics inside config. Lazy init delays creation until first use.
+
+
+## Follow-ups
+
+### Prototype injection into singleton?
+
+`ObjectProvider` or an `@Lookup` method creates a fresh prototype per use.
+
+### @Configuration proxy?
+
+@Bean inter-includes calls so two calls return same singleton unless @Scope prototype on method.

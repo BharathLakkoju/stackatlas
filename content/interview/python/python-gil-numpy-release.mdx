@@ -1,0 +1,34 @@
+---
+title: "GIL and NumPy"
+slug: python-gil-numpy-release
+kind: interview
+track: python
+difficulty: intermediate
+tags:
+  - numpy
+  - gil
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "NumPy releases GIL in C loops so threads can parallelize numerical work on large arrays."
+related:
+  - gil
+followUps:
+  - "BLAS threads?"
+  - "Use Numba JIT?"
+---
+Can threads speed NumPy operations despite the GIL?
+
+## Model answer
+
+Many ufuncs run C loops that release GIL—multiple threads can compute on disjoint array regions concurrently if work is large enough to overcome overhead. BLAS/OpenMP may spawn native threads underneath—watch oversubscription when also using Python threads. For element-wise Python callbacks GIL returns. numba njit can release GIL in compiled kernels. Rule: profile; parallelize at process level for mixed Python logic.
+
+
+## Follow-ups
+
+### BLAS threads?
+
+Set OMP_NUM_THREADS to avoid BLAS * Python thread explosion.
+
+### Use Numba JIT?
+
+numba njit(nogil=True) for hot loops after proving thread safety.

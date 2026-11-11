@@ -1,0 +1,34 @@
+---
+title: "Optional misuse"
+slug: java-optional-abuse
+kind: interview
+track: java
+difficulty: intermediate
+tags:
+  - java
+  - api-design
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Optional for returns not fields; avoid get() without check and Optional in collections."
+related:
+  - collections
+followUps:
+  - "Optional in JSON?"
+  - "orElse vs orElseGet?"
+---
+When should you NOT use Optional?
+
+## Model answer
+
+Optional models absent value in return types—API clarity. Do not use fields, method parameters, collections, or serialized JSON—use nullability docs or validation instead. Never optional.get() without isPresent—use map/orElseThrow. orElseGet lazy; orElse eager evaluates default always. Stream flatMap optional chains. For parameters, overloads or @Nullable clearer than Optional param boxing overhead.
+
+
+## Follow-ups
+
+### Optional in JSON?
+
+Jackson modules can serialize Optional empty as null—still prefer plain null in DTOs.
+
+### orElse vs orElseGet?
+
+orElseGet avoids constructing default when value present.

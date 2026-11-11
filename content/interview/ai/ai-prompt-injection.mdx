@@ -1,0 +1,34 @@
+---
+title: "Prompt injection"
+slug: ai-prompt-injection
+kind: interview
+track: ai
+difficulty: intermediate
+tags:
+  - security
+  - guardrails
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Treat retrieved and user content as untrusted; separate channels and tool allowlists."
+related:
+  - evals-guardrails
+followUps:
+  - "Output filtering?"
+  - "Canary tokens?"
+---
+How do you mitigate prompt injection in RAG apps?
+
+## Model answer
+
+Never concatenate untrusted docs into system role—delimit user/context channels clearly. System prompt immutable rules: only use provided context, refuse instructions in docs. Tool allowlist minimal permissions; confirm destructive ops. Input filters for known jailbreak patterns (weak alone). Output validators check citations exist. Log injections attempts. For high risk, human review step. Assume breach—do not put secrets in prompts retrievable by attacker-crafted queries.
+
+
+## Follow-ups
+
+### Output filtering?
+
+Structured output schema validation rejects exfil formats.
+
+### Canary tokens?
+
+Canary secrets in honeypot docs detect retrieval abuse.

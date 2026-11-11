@@ -1,0 +1,35 @@
+---
+title: "When not to use RAG"
+slug: ai-when-not-rag
+kind: interview
+track: ai
+difficulty: intermediate
+tags:
+  - rag
+  - architecture
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Small corpora, strict determinism, or ultra-fresh data may need fine-tune, tools, or rules instead."
+related:
+  - rag
+  - llm-fundamentals
+followUps:
+  - "Full context window?"
+  - "Fine-tune vs RAG?"
+---
+When should you avoid RAG?
+
+## Model answer
+
+Skip RAG if entire knowledge fits reliably in context with room for instructions—simpler and fewer moving parts. Highly regulated deterministic answers may need rule engines not retrieval stochasticity. Data changes faster than index rebuild without SLA—use live tool calls to DB instead. If grounding corpus is untrusted and injection risk unacceptable without heavy guardrails, limit retrieval surface. Tiny FAQ sets might be cheaper as cached prompts. RAG shines on large private corpora where citations matter and models lack training data.
+
+
+## Follow-ups
+
+### Full context window?
+
+Long context reduces chunking pain but cost/latency scale with tokens.
+
+### Fine-tune vs RAG?
+
+Fine-tune style/format; RAG facts—often combine.

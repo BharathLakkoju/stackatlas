@@ -1,0 +1,34 @@
+---
+title: "SQS at-least-once delivery"
+slug: cloud-sqs-at-least-once
+kind: interview
+track: cloud
+difficulty: intermediate
+tags:
+  - sqs
+  - messaging
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Visibility timeout, idempotent consumers, and dead-letter queues for poison messages."
+related:
+  - lambda-api-gateway
+followUps:
+  - "FIFO ordering?"
+  - "Exactly-once illusion?"
+---
+How do you handle SQS duplicate messages?
+
+## Model answer
+
+Standard SQS delivers at-least-once—duplicates on retry after visibility timeout expiry if processing slow. Set visibility > p99 processing. Consumers must be idempotent: dedupe table on message id, conditional writes, natural keys. Partial failures: delete only after success or use transactional outbox. DLQ after maxReceiveCount isolates poison pills. FIFO gives ordering and dedupe window per queue—lower throughput. Exactly-once end-to-end needs idempotent design anyway across services.
+
+
+## Follow-ups
+
+### FIFO ordering?
+
+FIFO message group id orders per group; content-based deduplication optional.
+
+### Exactly-once illusion?
+
+Kafka exactly-once transactional within cluster still needs idempotent sinks.

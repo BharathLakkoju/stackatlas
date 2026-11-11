@@ -1,0 +1,35 @@
+---
+title: "LangGraph vs LangChain"
+slug: ai-langgraph-vs-langchain
+kind: interview
+track: ai
+difficulty: intermediate
+tags:
+  - langgraph
+  - langchain
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Stateful graph nodes versus composable chains—link to compare for orchestration choice."
+related:
+  - langgraph-vs-langchain
+  - tool-using-agents
+followUps:
+  - "Checkpointing?"
+  - "Streaming UX?"
+---
+When prefer LangGraph over LangChain chains?
+
+## Model answer
+
+LangGraph models agents as explicit graph—nodes, edges, conditional routing, persistent checkpoint state, human interrupts. Good for multi-step workflows needing recovery and audit. Classic LangChain LCEL chains are lighter for linear retrieve-then-generate. Use graph when cycles, branching, or durable state matter; chains for simple pipelines. Both share tool bindings—choice is orchestration complexity. Details: [compare](/compare/langchain-vs-langgraph).
+
+
+## Follow-ups
+
+### Checkpointing?
+
+Checkpoints enable resume after crash and time travel debug.
+
+### Streaming UX?
+
+Stream tokens per node for progressive UI.

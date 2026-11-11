@@ -1,0 +1,34 @@
+---
+title: "Token cost control"
+slug: ai-token-cost
+kind: interview
+track: ai
+difficulty: intermediate
+tags:
+  - cost
+  - llm
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Cache prompts, compress history, route small models, and monitor spend per feature."
+related:
+  - llm-fundamentals
+followUps:
+  - "Batch API?"
+  - "Speculative decoding?"
+---
+How do you reduce LLM inference cost in production?
+
+## Model answer
+
+Count tokens in/out per route—use [/tools/llm-cost](/tools/llm-cost). Cache embeddings and repeated system prompts (prompt caching on providers). Summarize long chat history instead of full replay. Route easy intents to smaller models; escalate on low confidence. Reduce retrieval k and chunk size after eval proves sufficient. Batch offline jobs. Set max_output_tokens. Track cost anomaly alerts per API key/team.
+
+
+## Follow-ups
+
+### Batch API?
+
+Provider batch APIs discount latency-tolerant workloads.
+
+### Speculative decoding?
+
+Speculative decoding speeds generation—infra level not app.

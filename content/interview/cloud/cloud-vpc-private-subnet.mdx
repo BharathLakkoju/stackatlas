@@ -1,0 +1,34 @@
+---
+title: "VPC private subnet"
+slug: cloud-vpc-private-subnet
+kind: interview
+track: cloud
+difficulty: intermediate
+tags:
+  - vpc
+  - networking
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "No direct internet route; outbound via NAT; place workloads and RDS privately."
+related:
+  - vpc
+followUps:
+  - "NAT gateway cost?"
+  - "VPC endpoints?"
+---
+How does a private subnet reach the internet for updates?
+
+## Model answer
+
+Private subnet route table has no 0.0.0.0/0 to Internet Gateway—instances lack public IPs. Outbound internet via NAT Gateway in public subnet (route private 0.0.0/0 to NAT). Inbound from internet requires ALB in public subnets or API Gateway. RDS and internal services stay private; security groups allow least ports from app SG only. Interface VPC endpoints reach AWS APIs (S3, Dynamo) without internet—cheaper and more secure than NAT for AWS traffic.
+
+
+## Follow-ups
+
+### NAT gateway cost?
+
+NAT GW hourly + data processing—per-AZ HA doubles cost; endpoints reduce NAT egress.
+
+### VPC endpoints?
+
+Gateway endpoint S3 free; interface endpoints per AZ ENI cost.
