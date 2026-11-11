@@ -1,0 +1,77 @@
+---
+title: "AI engineering cheatsheet"
+slug: ai
+kind: cheatsheet
+track: ai
+difficulty: intermediate
+tags:
+  - llm
+  - rag
+  - agents
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "LLM basics, embeddings, RAG, agents, evals, and guardrails—production constraints without vendor slide deck fluff."
+related:
+  - llm-fundamentals
+  - embeddings
+  - rag
+---
+
+## When to use what
+
+| Need | Approach |
+|------|----------|
+| Factual, private docs | RAG + citations |
+| Fixed workflow, tools | Agent / graph |
+| Cheap classification | Small model or rules |
+| Creative copy | LLM direct (with review) |
+
+Skip RAG when data fits in context, changes constantly without index budget, or liability requires deterministic rules only.
+
+## RAG pipeline
+
+1. Chunk → embed → vector store (+ optional BM25).
+2. Retrieve top-k → optional rerank.
+3. Pack context within token budget → generate with cite instructions.
+
+Chunking lab: [/labs/rag-chunking](/labs/rag-chunking).
+
+## Embeddings
+
+- Match **model** at index and query time.
+- Domain-specific (code, legal) may beat general MTE models.
+- Normalize for cosine; watch dimension cost in DB.
+
+## Hybrid search
+
+`score = α * dense + (1-α) * sparse` or RRF fusion—helps IDs, SKUs, rare tokens.
+
+## Agents
+
+- Tool loop: plan → call → observe → stop condition.
+- Cap iterations; validate tool args; log traces.
+- [LangGraph vs LangChain](/compare/langchain-vs-langgraph) for stateful graphs.
+
+## Evals
+
+| Metric | Measures |
+|--------|----------|
+| Retrieval recall@k | Did right chunk appear? |
+| Faithfulness | Answer supported by context? |
+| Task success | End-to-end rubric |
+
+## Safety / cost
+
+- Prompt injection: treat retrieved text as **untrusted**; separate system vs user channels.
+- Ground answers in sources; refuse when context empty.
+- Token spend: [/tools/llm-cost](/tools/llm-cost); cache prompts, compress history.
+
+```py
+def build_messages(system: str, context: str, question: str):
+    return [
+        {"role": "system", "content": system},
+        {"role": "user", "content": f"Context:\n{context}\n\nQ: {question}\nCite sources."},
+    ]
+```
+
+Track: [/ai](/ai). Lessons: [LLM fundamentals](/learn/ai/llm-fundamentals), [embeddings](/learn/ai/embeddings), [RAG](/learn/ai/rag).
