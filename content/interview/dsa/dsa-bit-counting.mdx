@@ -1,0 +1,38 @@
+---
+title: "Count set bits"
+slug: dsa-bit-counting
+kind: interview
+track: dsa
+difficulty: intermediate
+tags:
+  - bit-manipulation
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Kernighan loop, shifts, or popcount builtins."
+related:
+  - big-o-complexity
+followUps:
+  - "Count in array?"
+  - "Power of two?"
+---
+Return number of 1 bits in binary representation of n.
+
+## Model answer
+
+While n>0: n &= n-1 clears lowest set bit; count iterations = set bits.
+
+Alternatively shift and add n&1. Builtins (Integer.bitCount) are O(1) word size.
+
+Power of two: n>0 && (n&(n-1))==0.
+
+**Complexity:** O(k) set bits; O(log n) bit shifts.
+
+## Follow-ups
+
+### Count in array?
+
+Popcount per word across array.
+
+### Power of two?
+
+Single set bit iff n&(n-1)==0 with n>0.

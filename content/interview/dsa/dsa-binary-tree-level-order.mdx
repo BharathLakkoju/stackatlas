@@ -1,0 +1,39 @@
+---
+title: "Binary tree level order traversal"
+slug: dsa-binary-tree-level-order
+kind: interview
+track: dsa
+difficulty: intermediate
+tags:
+  - bfs
+  - trees
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "BFS queue; batch by level size for grouped output."
+related:
+  - bfs-dfs
+followUps:
+  - "Zigzag order?"
+  - "Bottom-up?"
+---
+Return level-order traversal of binary tree node values.
+
+## Model answer
+
+Enqueue root. While queue non-empty, read size = queue length, dequeue size nodes forming one level, enqueue children left then right.
+
+Visits each node once: O(n) time. Queue holds up to widest level: O(n) space worst case.
+
+Empty tree returns []. Zigzag reverses alternate levels or pushes children in reverse every other row.
+
+**Complexity:** Time O(n), space O(n) worst-case queue.
+
+## Follow-ups
+
+### Zigzag order?
+
+Alternate reverse flag per level or reverse child push order.
+
+### Bottom-up?
+
+Reverse collected level list or DFS with depth indexing from end.
