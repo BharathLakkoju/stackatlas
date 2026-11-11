@@ -1,0 +1,39 @@
+---
+title: "Valid anagram"
+slug: dsa-valid-anagram
+kind: interview
+track: dsa
+difficulty: intermediate
+tags:
+  - hashing
+  - strings
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Compare character counts or sorted forms to decide if two strings are anagrams."
+related:
+  - hashing
+followUps:
+  - "Unicode / non-ASCII?"
+  - "Multiset with fixed alphabet?"
+---
+Given strings s and t, return whether t is an anagram of s.
+
+## Model answer
+
+Anagrams have identical per-character counts. Increment counts for s, decrement for t; any negative count or leftover positives after processing both means false.
+
+For lowercase ASCII, a length-26 int array beats a hash map. Reject immediately if lengths differ.
+
+Sorting both strings and comparing costs O(n log n) but is simple—mention it, then prefer counting for interviews.
+
+**Complexity:** Time O(n), space O(1) for 26-letter counter.
+
+## Follow-ups
+
+### Unicode / non-ASCII?
+
+Normalize Unicode (NFC), count code points in a map when outside ASCII.
+
+### Multiset with fixed alphabet?
+
+Fixed alphabet size k uses O(k) counter array regardless of n.

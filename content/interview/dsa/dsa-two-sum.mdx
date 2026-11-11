@@ -1,0 +1,40 @@
+---
+title: "Two Sum"
+slug: dsa-two-sum
+kind: interview
+track: dsa
+difficulty: intermediate
+tags:
+  - hashing
+  - arrays
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Return two indices that sum to target using a one-pass hash map of value to index with O(n) time."
+related:
+  - hashing
+  - two-pointers
+followUps:
+  - "What if the array is sorted?"
+  - "How do you handle duplicate values?"
+---
+Given an array of integers nums and an integer target, return indices of the two numbers that add to target. You may not use the same element twice.
+
+## Model answer
+
+Scan nums once while maintaining a map from each seen value to its index. For nums[i], let need = target - nums[i]. If need is already a key in the map, return [map[need], i] immediately. Otherwise set map[nums[i]] = i and continue.
+
+Because values are only inserted after you pass their index, you never pair an element with itself. Extra space is O(n) for the map; time is O(n).
+
+If the interviewer allows sorting, sort (keeping index array if needed) and use two pointers from both ends—O(n log n) time, O(1) extra space besides sort buffer.
+
+**Complexity:** Time O(n), space O(n).
+
+## Follow-ups
+
+### What if the array is sorted?
+
+Two pointers on sorted values: move lo/hi based on whether sum is below or above target.
+
+### How do you handle duplicate values?
+
+For duplicate values at different indices, storing latest index is fine for unique pair; use frequency counts when counting all pairs.
