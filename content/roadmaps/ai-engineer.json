@@ -1,0 +1,98 @@
+{
+  "slug": "ai-engineer",
+  "title": "AI Engineer",
+  "role": "AI Engineer",
+  "summary": "Go from LLM fundamentals through embeddings, RAG, agents, production evals, async Python APIs, and automated deployment.",
+  "estimatedWeeks": 10,
+  "nodes": [
+    {
+      "id": "start",
+      "label": "LLM foundations",
+      "description": "Ground agent and retrieval work in how models tokenize, attend, and fail.",
+      "children": ["llm-fundamentals", "async-await"]
+    },
+    {
+      "id": "llm-fundamentals",
+      "label": "LLM fundamentals",
+      "lessonSlug": "llm-fundamentals",
+      "description": "Compare model families, context limits, and inference cost drivers.",
+      "children": ["embeddings"]
+    },
+    {
+      "id": "async-await",
+      "label": "Async Python for AI APIs",
+      "lessonSlug": "async-await",
+      "description": "Serve streaming completions and tool calls without blocking I/O.",
+      "children": ["fastapi-di"]
+    },
+    {
+      "id": "fastapi-di",
+      "label": "FastAPI dependency injection",
+      "lessonSlug": "fastapi-di",
+      "description": "Wire model clients, vector stores, and auth into route handlers.",
+      "children": ["pydantic-v2"]
+    },
+    {
+      "id": "pydantic-v2",
+      "label": "Pydantic v2 models",
+      "lessonSlug": "pydantic-v2",
+      "description": "Validate tool inputs, structured outputs, and agent state schemas.",
+      "children": ["embeddings"]
+    },
+    {
+      "id": "embeddings",
+      "label": "Embeddings",
+      "lessonSlug": "embeddings",
+      "description": "Choose embedding models and similarity metrics for semantic search.",
+      "children": ["rag"]
+    },
+    {
+      "id": "rag",
+      "label": "Retrieval-augmented generation",
+      "lessonSlug": "rag",
+      "description": "Chunk, index, retrieve, and cite sources in grounded answers.",
+      "children": ["langgraph-vs-langchain", "tool-using-agents"]
+    },
+    {
+      "id": "langgraph-vs-langchain",
+      "label": "LangGraph vs LangChain",
+      "lessonSlug": "langgraph-vs-langchain",
+      "description": "Pick orchestration primitives for stateful multi-step workflows.",
+      "children": ["tool-using-agents"]
+    },
+    {
+      "id": "tool-using-agents",
+      "label": "Tool-using agents",
+      "lessonSlug": "tool-using-agents",
+      "description": "Design reliable tool schemas, retries, and human-in-the-loop steps.",
+      "children": ["evals-guardrails"]
+    },
+    {
+      "id": "evals-guardrails",
+      "label": "Evals & guardrails",
+      "lessonSlug": "evals-guardrails",
+      "description": "Measure quality, block unsafe outputs, and regression-test prompts.",
+      "children": ["ship-ai"]
+    },
+    {
+      "id": "ship-ai",
+      "label": "Ship to production",
+      "description": "Containerize inference services and automate deploy with checks.",
+      "children": ["docker-multistage", "cicd"]
+    },
+    {
+      "id": "docker-multistage",
+      "label": "Multi-stage Docker images",
+      "lessonSlug": "docker-multistage",
+      "description": "Bundle model runtimes and workers in reproducible images.",
+      "children": ["cicd"]
+    },
+    {
+      "id": "cicd",
+      "label": "CI/CD pipelines",
+      "lessonSlug": "cicd",
+      "description": "Run eval suites in CI and promote model or prompt changes safely.",
+      "children": []
+    }
+  ]
+}

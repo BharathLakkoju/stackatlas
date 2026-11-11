@@ -1,0 +1,116 @@
+---
+title: "Scalability fundamentals"
+slug: scalability-fundamentals
+kind: lesson
+track: system-design
+module: fundamentals
+order: 1
+difficulty: beginner
+prerequisites: []
+root: true
+tags:
+  - scalability
+  - capacity
+  - fundamentals
+estimatedMinutes: 15
+lastReviewed: "2026-11-01"
+summary: "Separate vertical vs horizontal scale, spot stateless tiers, and estimate QPS and storage before naming a dozen microservices."
+related:
+  - caching
+  - load-balancing
+---
+
+## Why this matters
+
+System design interviews start with **who uses it and how much**. Without rough numbers, you cannot justify caches, shards, or queues. Scalability is not “use Kubernetes” — it is making each tier grow predictably: stateless app servers scale out; databases and sessions need deliberate plans.
+
+Leadership expects you to say what breaks first (CPU, DB connections, disk I/O) and what you would measure before redesigning.
+
+## Mental model
+
+**Vertical scaling** (bigger machine) is fast until one box is the limit. **Horizontal scaling** (more machines) needs **stateless** app nodes behind a load balancer and shared storage or caches for anything mutable.
+
+Back-of-envelope: daily active users × actions per day → average QPS (divide by 86,400, peak ~2–10× average). Storage = items × bytes × replication factor. Stateless tiers are linear; the database is usually the choke point unless you partition or offload reads.
+
+## Code
+
+```ts
+type TrafficEstimate = {
+  dailyActiveUsers: number;
+  requestsPerUserPerDay: number;
+  peakMultiplier: number;
+};
+
+function estimateQps(traffic: TrafficEstimate): { averageQps: number; peakQps: number } {
+  const requestsPerDay = traffic.dailyActiveUsers * traffic.requestsPerUserPerDay;
+  const averageQps = requestsPerDay / 86_400;
+  const peakQps = averageQps * traffic.peakMultiplier;
+  return { averageQps, peakQps };
+}
+
+type StorageEstimate = {
+  newObjectsPerDay: number;
+  bytesPerObject: number;
+  retentionDays: number;
+  replicaFactor: number;
+};
+
+function estimateStorageBytes(storage: StorageEstimate): number {
+  const rawPerDay = storage.newObjectsPerDay * storage.bytesPerObject;
+  const retained = rawPerDay * storage.retentionDays;
+  return retained * storage.replicaFactor;
+}
+
+function appServersForCpu(peakQps: number, qpsPerServer: number): number {
+  if (qpsPerServer <= 0) {
+    return 0;
+  }
+  return Math.ceil(peakQps / qpsPerServer);
+}
+```
+
+These helpers do not replace a full design — they force explicit assumptions you can defend in an interview.
+
+## Common mistakes
+
+- Scaling the app tier while every request hits the primary database with no cache or read replicas.
+- Ignoring **connection pools**: 500 app instances × 20 connections each can swamp Postgres.
+- Treating “microservices” as scalability — network chatter and ops cost rise without clear boundaries.
+- Forgetting tail latency: average QPS hides spikes; queues and autoscaling need peak targets.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "Why is horizontal scaling easier when the application tier is stateless?",
+      choices: [
+        "Stateless servers never need databases",
+        "Any instance can handle any request without local session data",
+        "Stateless code runs without CPUs",
+        "Load balancers remove the need for caches"
+      ],
+      answer: 1,
+      explanation: "Traffic can shift between instances; session and authoritative state live in shared stores."
+    },
+    {
+      prompt: "10M DAU each issue 20 API calls/day. Rough average QPS (no peak multiplier)?",
+      choices: [
+        "About 2.3",
+        "About 23",
+        "About 230",
+        "About 2,300"
+      ],
+      answer: 3,
+      explanation: "200 million requests per day ÷ 86,400 seconds ≈ 2,300 average QPS."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- “Design Twitter timeline” — start with read/write ratio and fan-out, not sharding on day one.
+- Follow-up: “What is your first bottleneck?” — DB writes, hot keys, or search index.
+- Use a sanity check like [capacity planning](/tools/capacity) after you state assumptions.
+
+After estimates, add [Caching](/learn/system-design/fundamentals/caching) for read-heavy paths and [Load balancing](/learn/system-design/fundamentals/load-balancing) before you multiply app instances.
