@@ -1,0 +1,59 @@
+---
+title: "LangChain vs LangGraph"
+slug: langchain-vs-langgraph
+kind: compare
+left: langgraph-vs-langchain
+right: tool-using-agents
+track: ai
+tags:
+  - agents
+  - orchestration
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Chains and LCEL fit linear pipelines; LangGraph adds explicit state, cycles, and checkpoints for production agents."
+related:
+  - langgraph-vs-langchain
+  - tool-using-agents
+---
+
+## At a glance
+
+| | LangChain (LCEL / chains) | LangGraph |
+|---|---------------------------|-----------|
+| Control flow | Mostly linear DAG | Graph with cycles & branches |
+| State | Implicit in prompt + memory objects | First-class graph state |
+| Human-in-the-loop | Ad hoc interrupts | Checkpoints & resume |
+| Best for | RAG one-shot, simple tool call | Multi-step agents, workflows |
+| Ops cost | Lower conceptual weight | More plumbing, more control |
+
+## LangChain angle
+
+LangChain excels at **composing steps**: retrieve, format context, call model, parse output. LCEL pipes are easy to read in code review and enough for many internal copilots.
+
+Limits appear when you need **cycles** (tool → observe → maybe tool again) with explicit stop conditions, or when failures must **resume** mid-flight. Bolting state on with ad hoc globals becomes hard to audit.
+
+Anchor lesson: [LangGraph vs LangChain](/learn/ai/langgraph-vs-langchain) (framing) and [tool-using agents](/learn/ai/tool-using-agents) for tool schemas.
+
+## LangGraph angle
+
+LangGraph models agents as **nodes and edges** with reducers updating shared state. That enables:
+
+- Conditional routing (classify → branch).
+- Persistence across crashes (checkpoint store).
+- Time-travel debugging on state snapshots.
+
+Tradeoff: more boilerplate, team needs graph mental model, observability must trace node transitions.
+
+## When to pick which
+
+Choose **LangChain** when the product path is stable: retrieve → answer, maybe one calculator tool.
+
+Choose **LangGraph** when compliance needs audit trails, humans approve tool calls, or business workflows are literally state machines (support triage, approvals).
+
+## Eval and safety
+
+Both need tool allowlists and max-iteration caps. Graphs make it easier to enforce **hard stops** on edges; chains rely on discipline in callback code.
+
+Hybrid setups exist: LangChain retriever node inside a LangGraph supervisor—compare is not exclusive or.
+
+Deep dives: [/ai](/ai) track, [RAG eval blog](/blog/rag-evaluation-in-production).

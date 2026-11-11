@@ -1,0 +1,51 @@
+---
+title: "Docker cache bust in CI"
+slug: docker-cache-bust
+kind: daily
+track: cloud
+publishedAt: "2026-11-10"
+tags:
+  - docker
+  - cicd
+estimatedMinutes: 5
+lastReviewed: "2026-11-01"
+summary: "One COPY . . line placed too early rebuilds every layer on any commit—reorder for cache-friendly pipelines."
+related:
+  - docker-multistage
+  - cicd
+---
+
+Docker caches each instruction by the hash of its inputs. Change **any** preceding layer → everything after rebuilds.
+
+Anti-pattern:
+
+```dockerfile
+FROM node:22-alpine
+COPY . .
+RUN npm ci && npm run build
+```
+
+Any README edit busts the `npm ci` layer.
+
+Better:
+
+```dockerfile
+FROM node:22-alpine
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+```
+
+Lockfile changes invalidate dependencies; source-only commits reuse `node_modules` layer.
+
+**CI tips:**
+
+- Pull previous image `--cache-from` in BuildKit.
+- Use `.dockerignore` so `node_modules/` and `.git` never invalidate context.
+- Multi-stage: compile in `builder`, copy `/dist` to slim runtime—smaller deploy, faster security scans.
+
+When builds feel “random slow,” log which step missed cache—often a forgotten `ARG` timestamp in `ENV` that changes every build.
+
+Lessons: [multi-stage Docker](/learn/cloud/docker-multistage) and [CI/CD](/learn/cloud/cicd). Cheatsheet: [/cheatsheets/cloud](/cheatsheets/cloud).
