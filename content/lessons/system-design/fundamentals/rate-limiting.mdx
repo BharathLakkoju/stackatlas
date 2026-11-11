@@ -1,0 +1,144 @@
+---
+title: "Rate limiting and fair usage"
+slug: rate-limiting
+kind: lesson
+track: system-design
+module: fundamentals
+order: 5
+difficulty: intermediate
+prerequisites:
+  - caching
+  - load-balancing
+root: false
+tags:
+  - rate-limit
+  - token-bucket
+  - abuse
+estimatedMinutes: 16
+lastReviewed: "2026-11-01"
+summary: "Protect APIs with token buckets or sliding windows. Decide per-user vs per-IP keys and how limits behave behind load balancers."
+related:
+  - url-shortener
+---
+
+## Why this matters
+
+Without rate limits, one client can starve others, inflate your cloud bill, or trigger cascading failures. Product and security want different guarantees: **429** with `Retry-After`, graceful degradation, or paid tiers with higher quotas.
+
+Distributed rate limiting must agree across app instances — usually Redis with atomic increments or a [consistent hashing lab](/labs/consistent-hashing) style shard for counters.
+
+## Mental model
+
+**Token bucket**: tokens refill at a steady rate; each request spends one token; burst allowed up to bucket size.
+
+**Fixed window**: count requests per clock minute — simple but boundary spikes (2× traffic at window edges).
+
+**Sliding window log** or **approximate sliding window** in Redis smooths edges at higher memory cost.
+
+Key choice: user id + route, API key, or IP (IP alone is weak behind NAT). Return headers like `X-RateLimit-Remaining` for good client behavior.
+
+## Code
+
+```ts
+type TokenBucket = {
+  capacity: number;
+  tokens: number;
+  refillPerSecond: number;
+  lastRefillMs: number;
+};
+
+function refillBucket(bucket: TokenBucket, nowMs: number): void {
+  const elapsedSec = (nowMs - bucket.lastRefillMs) / 1000;
+  if (elapsedSec <= 0) {
+    return;
+  }
+  const add = elapsedSec * bucket.refillPerSecond;
+  bucket.tokens = Math.min(bucket.capacity, bucket.tokens + add);
+  bucket.lastRefillMs = nowMs;
+}
+
+function tryConsume(bucket: TokenBucket, nowMs: number, cost: number): boolean {
+  refillBucket(bucket, nowMs);
+  if (bucket.tokens >= cost) {
+    bucket.tokens -= cost;
+    return true;
+  }
+  return false;
+}
+
+class InMemoryLimiter {
+  private readonly buckets = new Map<string, TokenBucket>();
+
+  constructor(
+    private readonly capacity: number,
+    private readonly refillPerSecond: number
+  ) {}
+
+  allow(key: string, nowMs: number): boolean {
+    let bucket = this.buckets.get(key);
+    if (!bucket) {
+      bucket = {
+        capacity: this.capacity,
+        tokens: this.capacity,
+        refillPerSecond: this.refillPerSecond,
+        lastRefillMs: nowMs,
+      };
+      this.buckets.set(key, bucket);
+    }
+    return tryConsume(bucket, nowMs, 1);
+  }
+}
+
+function fixedWindowCount(windowStartMs: number, nowMs: number, windowMs: number, count: number): number {
+  if (nowMs - windowStartMs >= windowMs) {
+    return 0;
+  }
+  return count;
+}
+```
+
+Production systems persist buckets in Redis with Lua scripts for atomic refill and decrement across nodes.
+
+## Common mistakes
+
+- Per-process limits only — each instance grants the full quota (N× too generous).
+- Synchronized global windows without jitter — everyone retries at the same second.
+- Rate limiting **health checks** or internal mesh traffic by mistake.
+- No distinction between anonymous and authenticated identity — limits are trivial to evade.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "Token bucket vs fixed window: token bucket mainly improves:",
+      choices: [
+        "Cryptographic security",
+        "Controlled burst while averaging rate over time",
+        "SQL query planning",
+        "CDN cache hit ratio"
+      ],
+      answer: 1,
+      explanation: "Burst capacity is explicit; average rate still respects refillPerSecond."
+    },
+    {
+      prompt: "Why is a shared Redis counter common behind multiple app servers?",
+      choices: [
+        "Redis is always strongly consistent globally",
+        "Counters must be visible to all instances enforcing the same key",
+        "HTTP is stateless so cookies are illegal",
+        "Load balancers cannot see HTTP"
+      ],
+      answer: 1,
+      explanation: "A central store (or sharded counters) aligns decisions across instances."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- “Design a rate limiter for 10k instances” — shard keys, local leaky bucket + sync, or edge enforcement at API gateway.
+- Abuse: captcha escalation, WAF, account-level bans.
+- Pair with [Caching](/learn/system-design/fundamentals/caching) to absorb hot reads after limits reject writes.
+
+Try the [Rate limiter lives with consistent hashing](/labs/consistent-hashing) lab, then walk through [URL shortener](/learn/system-design/case-studies/url-shortener) redirect traffic with quotas on create vs resolve.
