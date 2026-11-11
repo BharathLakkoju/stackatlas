@@ -1,0 +1,145 @@
+---
+title: "Python decorators in practice"
+slug: decorators
+kind: lesson
+track: python
+module: internals
+order: 2
+difficulty: beginner
+prerequisites:
+  - gil
+tags:
+  - decorators
+  - functions
+  - fastapi
+estimatedMinutes: 14
+lastReviewed: "2026-11-01"
+summary: "Decorators wrap callables to add logging, auth, or timing without changing every function body—syntax sugar for higher-order functions."
+related:
+  - fastapi-di
+---
+
+## Why this matters
+
+FastAPI route handlers and dependencies are saturated with decorators: `@app.get`, `@lru_cache`, custom permission checks. If decorators feel like magic, you cannot debug wrapper order, lost metadata, or async vs sync mistakes.
+
+They are also the bridge from [GIL](/learn/python/internals/gil)-level "how calls run" to framework injection patterns in dependency injection.
+
+## Mental model
+
+`@decorator` above `def f` means `f = decorator(f)`. The decorator is a callable that receives a function and returns a **replacement** callable (often a wrapper).
+
+**Stacking**: bottom decorator runs first—`@a` then `@b` becomes `a(b(f))`.
+
+**Preserving metadata**: use `functools.wraps(inner)` so `__name__` and docstrings survive.
+
+**Parameterized decorators**: outer function returns the actual decorator: `@retry(times=3)` is `retry(times=3)(func)`.
+
+Async wrappers must `await` the inner coroutine function.
+
+## Code
+
+```python
+import functools
+import time
+from collections.abc import Callable
+from typing import ParamSpec, TypeVar
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+def timed[**P, R](func: Callable[P, R]) -> Callable[P, R]:
+    @functools.wraps(func)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+        start = time.perf_counter()
+        try:
+            return func(*args, **kwargs)
+        finally:
+            elapsed = time.perf_counter() - start
+            print(f"{func.__name__} took {elapsed:.4f}s")
+
+    return wrapper
+
+
+def retry(times: int) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
+        @functools.wraps(func)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+            last_error: BaseException | None = None
+            for attempt in range(times):
+                try:
+                    return func(*args, **kwargs)
+                except BaseException as exc:
+                    last_error = exc
+                    if attempt + 1 == times:
+                        raise
+            assert last_error is not None
+            raise last_error
+
+        return wrapper
+
+    return decorator
+
+
+@timed
+@retry(times=3)
+def load_config(path: str) -> dict[str, str]:
+    with open(path, encoding="utf-8") as handle:
+        line = handle.readline().strip()
+    return {"first_line": line}
+
+
+def main() -> None:
+    print(load_config(__file__))
+
+
+if __name__ == "__main__":
+    main()
+```
+
+`retry` is parameterized; `timed` is a simple wrapper. `wraps` keeps `load_config` identifiable in stack traces.
+
+## Common mistakes
+
+- Forgetting `wraps`, breaking observability and OpenAPI tool introspection.
+- Decorating async functions with sync wrappers that never await.
+- Returning the wrong object from a decorator factory (missing inner `return wrapper`).
+- Assuming decorator order does not matter when auth and caching stack.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "What does `@decorator` desugar to?",
+      choices: [
+        "decorator = function",
+        "function = decorator(function)",
+        "function.decorator = True",
+        "decorator(function, function)"
+      ],
+      answer: 1,
+      explanation: "The decorator is called with the function object and must return the callable that replaces it."
+    },
+    {
+      prompt: "Why use functools.wraps on a wrapper?",
+      choices: [
+        "Speed up the wrapped function",
+        "Copy metadata like __name__ and __doc__ to the wrapper",
+        "Make the function thread-safe",
+        "Enable the GIL release"
+      ],
+      answer: 1,
+      explanation: "wraps assigns attributes from the original function so tooling and humans see the right identity."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- Implement a simple `@cache` or `@require_role` decorator.
+- Explain decorator order for `@app.get` plus a custom auth decorator.
+- Class-based decorators vs function wrappers.
+
+Next: [FastAPI dependency injection](/learn/python/fastapi/fastapi-di), which uses decorator-like declaration for composable endpoints.

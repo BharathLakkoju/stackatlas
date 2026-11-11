@@ -1,0 +1,133 @@
+---
+title: "async and await in Python"
+slug: async-await
+kind: lesson
+track: python
+module: internals
+order: 3
+difficulty: intermediate
+prerequisites:
+  - gil
+tags:
+  - asyncio
+  - concurrency
+  - async
+estimatedMinutes: 17
+lastReviewed: "2026-11-01"
+summary: "asyncio runs many I/O-bound coroutines on one thread by cooperatively yielding at await points—fast when work waits, not a cure for CPU-bound Python."
+related:
+  - sqlalchemy-async
+  - fastapi-di
+---
+
+## Why this matters
+
+FastAPI endpoints are `async def` by default for a reason: one process can juggle thousands of idle HTTP client waits without a thread per socket. Misusing `async`—blocking calls inside coroutines, or `asyncio.run` in nested loops—stalls the whole loop like a JavaScript main-thread block.
+
+Understanding await points connects back to why the [GIL](/learn/python/internals/gil) still allows efficient network servers without threads everywhere.
+
+## Mental model
+
+A **coroutine** is defined with `async def`. Calling it returns a coroutine object; it runs only when awaited or scheduled on a loop.
+
+`await` suspends **this** coroutine until the awaited future completes, letting the event loop run other ready tasks.
+
+Never call blocking `time.sleep` or synchronous DB drivers inside async routes; use `asyncio.sleep`, async drivers, or `asyncio.to_thread` for unavoidable blocking.
+
+`asyncio.gather` runs concurrent coroutines; `TaskGroup` (3.11+) structured concurrency cancels siblings on failure.
+
+## Code
+
+```python
+import asyncio
+import time
+from collections.abc import Awaitable, Callable
+
+
+async def fetch_mock(label: str, delay: float) -> str:
+    await asyncio.sleep(delay)
+    return f"{label}:{delay:.2f}s"
+
+
+async def run_many() -> list[str]:
+    results = await asyncio.gather(
+        fetch_mock("a", 0.1),
+        fetch_mock("b", 0.15),
+        fetch_mock("c", 0.05),
+    )
+    return list(results)
+
+
+async def with_task_group() -> int:
+    total = 0
+    async with asyncio.TaskGroup() as tg:
+        for value in (1, 2, 3, 4):
+            async def work(n: int = value) -> int:
+                await asyncio.sleep(0.01)
+                return n * n
+
+            tg.create_task(work())
+    return total
+
+
+async def bad_block() -> None:
+    time.sleep(0.5)
+
+
+async def main() -> None:
+    started = time.perf_counter()
+    labels = await run_many()
+    elapsed = time.perf_counter() - started
+    print(labels)
+    print(f"gather elapsed ~{elapsed:.2f}s (not 0.30 sequential)")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+`gather` overlaps sleeps. `bad_block` would freeze the loop—do not do that in production handlers.
+
+## Common mistakes
+
+- Marking CPU-heavy functions `async` without awaits (they run synchronously and mislead readers).
+- Creating unbounded `create_task` without tracking cancellation on shutdown.
+- Mixing multiple event loops across threads without care.
+- Using sync SQLAlchemy sessions inside `async def` routes.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "What does `await asyncio.sleep(0.1)` do while waiting?",
+      choices: [
+        "Blocks the OS thread exclusively",
+        "Yields control so other tasks may run",
+        "Spawns a new Python process",
+        "Releases the GIL permanently"
+      ],
+      answer: 1,
+      explanation: "The coroutine suspends until the timer fires; the event loop can progress other ready coroutines."
+    },
+    {
+      prompt: "Why is `time.sleep` harmful inside an async FastAPI route?",
+      choices: [
+        "It raises TypeError",
+        "It blocks the event loop thread, stalling all concurrent requests",
+        "It disables Pydantic validation",
+        "It forces multiprocessing"
+      ],
+      answer: 1,
+      explanation: "Blocking calls occupy the loop thread; no other coroutines run until the sleep finishes."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- Compare asyncio, threads, and processes for a webhook fan-out service.
+- How do you call a legacy sync SDK from async code safely?
+- Lifespan events and graceful task cancellation on deploy.
+
+Wire this into [SQLAlchemy async](/learn/python/fastapi/sqlalchemy-async) and [FastAPI DI](/learn/python/fastapi/fastapi-di), or practice [/interview/python](/interview/python) concurrency prompts.
