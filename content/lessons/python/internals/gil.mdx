@@ -1,0 +1,128 @@
+---
+title: "The Python GIL explained"
+slug: gil
+kind: lesson
+track: python
+module: internals
+order: 1
+difficulty: intermediate
+prerequisites: []
+root: true
+tags:
+  - cpython
+  - gil
+  - threading
+estimatedMinutes: 16
+lastReviewed: "2026-11-01"
+summary: "CPython's Global Interpreter Lock lets one thread execute Python bytecode at a time—so CPU-bound threads do not scale, but I/O-bound threads still help."
+related:
+  - async-await
+---
+
+## Why this matters
+
+Teams spawn twelve threads to crunch numbers and see no speedup. Others avoid threads entirely and block the whole service on HTTP. The GIL explains **when** threads help (waiting on I/O) and **when** you need `multiprocessing`, native extensions, or `asyncio` for concurrency.
+
+It also frames interview answers about Python vs Go/Java for CPU-heavy workloads.
+
+## Mental model
+
+The **Global Interpreter Lock** is a mutex in CPython protecting interpreter state. One thread runs Python bytecode in a process at a time (with brief releases around I/O and some C calls).
+
+**CPU-bound** Python threads alternate on one core—little parallel speedup for pure Python math.
+
+**I/O-bound** threads release the GIL while waiting on sockets, disk, or sleep—overlap can improve throughput.
+
+`multiprocessing` uses separate interpreters (separate GILs) at the cost of pickling data. `asyncio` uses cooperative single-thread multitasking—great for many idle network waits, not for parallel number crunching.
+
+Other Python implementations (Jython, PyPy nuances) differ; production CPython is what most teams ship.
+
+## Code
+
+```python
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
+
+
+def count_forever() -> int:
+    total = 0
+    for i in range(5_000_000):
+        total += i
+    return total
+
+
+def io_wait() -> str:
+    time.sleep(0.2)
+    return "done"
+
+
+def run_cpu_threads() -> None:
+    start = time.perf_counter()
+    threads = [threading.Thread(target=count_forever) for _ in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    elapsed = time.perf_counter() - start
+    print(f"CPU threads elapsed: {elapsed:.2f}s")
+
+
+def run_io_threads() -> None:
+    start = time.perf_counter()
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        list(pool.map(lambda _: io_wait(), range(8)))
+    elapsed = time.perf_counter() - start
+    print(f"I/O threads elapsed: {elapsed:.2f}s")
+
+
+if __name__ == "__main__":
+    run_cpu_threads()
+    run_io_threads()
+```
+
+Four CPU threads often take **similar** wall time to one heavy loop. Eight sleeping tasks finish in roughly one sleep window when threaded.
+
+## Common mistakes
+
+- Expecting linear speedup from threads on numeric Python loops.
+- Using threads to parallelize CPU work instead of processes or a native library.
+- Blaming the GIL for single-threaded I/O code that never used concurrency.
+- Sharing mutable globals across threads without locks (GIL does not make dict updates atomic for compound operations).
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "When do threads most often help in CPython?",
+      choices: [
+        "Parallel pure-Python matrix multiply",
+        "Overlapping waits on network or disk I/O",
+        "Replacing the need for asyncio",
+        "Bypassing the GIL for all workloads"
+      ],
+      answer: 1,
+      explanation: "Threads can overlap I/O waits because the GIL is released during many blocking operations."
+    },
+    {
+      prompt: "What is a typical fix for CPU-bound parallelism in CPython?",
+      choices: [
+        "More threads in one process",
+        "multiprocessing or native code that releases the GIL",
+        "Disabling garbage collection",
+        "Using list comprehensions only"
+      ],
+      answer: 1,
+      explanation: "Separate processes have separate interpreters; NumPy/C extensions may release the GIL during heavy C loops."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- "Why is Python popular for web backends if the GIL exists?"
+- Compare `asyncio`, threads, and processes for a crawler plus analytics job.
+- Free-threading experiments (no-GIL builds): what changes for ops teams?
+
+Continue with [async and await](/learn/python/internals/async-await) for single-thread concurrency without fighting the GIL on I/O, or read [/cheatsheets/python](/cheatsheets/python) for quick concurrency reminders.

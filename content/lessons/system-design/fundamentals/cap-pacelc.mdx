@@ -1,0 +1,133 @@
+---
+title: "CAP and PACELC tradeoffs"
+slug: cap-pacelc
+kind: lesson
+track: system-design
+module: fundamentals
+order: 2
+difficulty: intermediate
+prerequisites:
+  - scalability-fundamentals
+root: false
+tags:
+  - cap
+  - consistency
+  - distributed-systems
+estimatedMinutes: 16
+lastReviewed: "2026-11-01"
+summary: "Under partition, choose consistency or availability. PACELC adds the latency vs consistency tradeoff when the network is healthy."
+related:
+  - caching
+---
+
+## Why this matters
+
+Distributed storage and caches **cannot** give you single-node semantics everywhere at infinite scale. Interviewers want you to name what users feel during a partition: stale reads, failed writes, or deliberate unavailability. Product choices (bank balance vs like count) drive the answer, not buzzwords.
+
+CAP is often misquoted as “pick two of three forever.” In practice, **partitions are rare**; PACELC captures everyday engineering: even without a partition, stronger consistency usually costs latency.
+
+## Mental model
+
+**CAP** (during a **network partition** between nodes): you lean **CP** (refuse writes or block reads to keep consensus) or **AP** (serve requests with possible divergence, repair later).
+
+**PACELC**: if **P**artition, choose **A** or **C**; **E**lse (normal operation), choose **L**atency or **C**onsistency. Example: Dynamo-style AP under partition; under no partition you may still read from a nearby replica (low latency, eventual consistency).
+
+Single-region strong consistency (one leader DB) sidesteps distributed CAP drama until you add multi-region active-active.
+
+## Code
+
+```ts
+type StoreMode = "cp" | "ap";
+
+type ReadResult = {
+  value: string;
+  stale: boolean;
+};
+
+class ToyPartitionedStore {
+  private primaryValue = "v1";
+  private replicaValue = "v1";
+  private partitioned = false;
+
+  constructor(private readonly mode: StoreMode) {}
+
+  setPartitioned(on: boolean): void {
+    this.partitioned = on;
+  }
+
+  write(value: string): { ok: boolean; reason?: string } {
+    if (this.partitioned && this.mode === "cp") {
+      return { ok: false, reason: "no quorum during partition" };
+    }
+    this.primaryValue = value;
+    if (!this.partitioned) {
+      this.replicaValue = value;
+    }
+    return { ok: true };
+  }
+
+  read(preferReplica: boolean): ReadResult {
+    if (this.partitioned && this.mode === "cp" && preferReplica) {
+      return { value: this.replicaValue, stale: this.replicaValue !== this.primaryValue };
+    }
+    const source = preferReplica ? this.replicaValue : this.primaryValue;
+    const stale = this.partitioned && source !== this.primaryValue;
+    return { value: source, stale };
+  }
+}
+
+function pacelcLabel(
+  duringPartition: StoreMode,
+  whenHealthy: "latency" | "consistency"
+): string {
+  const part = duringPartition === "cp" ? "PC" : "PA";
+  const healthy = whenHealthy === "latency" ? "EL" : "EC";
+  return `${part}/${healthy}`;
+}
+```
+
+The toy model is not production Paxos — it is a vocabulary anchor for interviews.
+
+## Common mistakes
+
+- Saying “we chose CP” while using multi-master replication with last-write-wins (that is AP behavior under conflict).
+- Assuming **linearizability** for a cache without invalidation or TTL strategy.
+- Ignoring **session stickiness** and calling a load-balanced farm “strongly consistent.”
+- Treating CAP as an excuse to skip durability — persistence and consensus are separate concerns.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "During a network partition, an AP system most likely:",
+      choices: [
+        "Rejects all reads until the partition heals",
+        "Accepts reads and writes on both sides, possibly diverging",
+        "Deletes all replicas",
+        "Requires a global lock for every GET"
+      ],
+      answer: 1,
+      explanation: "Availability favors responding even if replicas disagree; reconciliation happens later."
+    },
+    {
+      prompt: "PACELC 'else' branch mainly highlights:",
+      choices: [
+        "DNS TTL selection",
+        "Latency vs consistency when the network is not partitioned",
+        "Only SQL vs NoSQL",
+        "Image CDN caching"
+      ],
+      answer: 1,
+      explanation: "Most of the time you are not partitioned; you still choose how stale a read may be for speed."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- “Is eventual consistency OK for this feature?” — tie to user-visible staleness and conflict resolution.
+- Multi-region: “active-active vs active-passive” — CP on one writer vs AP with conflict rules.
+- Pair with [Caching](/learn/system-design/fundamentals/caching) — caches are usually PA/EL unless you use distributed invalidation with strict rules.
+
+After [Scalability fundamentals](/learn/system-design/fundamentals/scalability-fundamentals), use this lens while designing [Caching](/learn/system-design/fundamentals/caching) and other replicated tiers.
