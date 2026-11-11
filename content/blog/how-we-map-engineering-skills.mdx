@@ -1,0 +1,64 @@
+---
+title: "How we map engineering skills at StackAtlas"
+slug: how-we-map-engineering-skills
+kind: blog
+tags:
+  - product
+  - learning
+estimatedMinutes: 12
+lastReviewed: "2026-11-01"
+summary: "We connect lessons, interview drills, and labs through a shared skill graph instead of isolated playlists—here is how that map is built and maintained."
+related:
+  - scalability-fundamentals
+  - llm-fundamentals
+---
+
+Engineering interview prep usually fractures into silos: a LeetCode tab, a system design YouTube playlist, a framework tutorial that never mentions failure modes. StackAtlas treats those as **one navigable graph**—not because consolidation is trendy, but because the same judgment calls show up under different labels.
+
+## Problem: skills hide behind formats
+
+Candidates recognize a sliding-window story when the phrase appears in a problem title, but miss the same pattern inside a log-parsing task at work. Staff engineers flip between CAP tradeoffs and JWT expiry without thinking “different tracks”—yet most learning sites force that split.
+
+Our map starts from **verbs and invariants**, not course marketing names:
+
+- *Bound a contiguous window while a constraint holds* → DSA sliding window, rate-limiter windows, TCP read buffers.
+- *Idempotent retry under at-least-once delivery* → SQS consumers, payment APIs, webhook handlers.
+
+Each lesson slug is a node with explicit edges: `prerequisites`, `related`, `compareWith` (for compare pages), and optional roots per track so you cannot land on advanced JVM GC without a collections baseline unless you intentionally jump.
+
+## Layers of the graph
+
+1. **Lessons** are the source of truth for explanations and (where present) quizzes.
+2. **Interview questions** hang off lesson slugs you should have read first—answers name complexity and failure modes, not trick memes.
+3. **Cheatsheets** are one printable surface per track; they link back to lesson slugs, not orphan tips.
+4. **Daily** items are deliberately small—one invariant per day—with `publishedAt` so the [/daily feed](/daily/feed.xml) behaves like a calendar, not a dump.
+5. **Labs** add interaction; MDX only describes what to observe—the widget ships in the app.
+
+Roadmaps (see [/roadmaps](/roadmaps)) are curated paths through the same nodes for roles like “backend generalist” or “AI engineer,” with week estimates that assume spaced repetition rather than cramming.
+
+## Maintenance rules we enforce in CI
+
+Content is MDX with a strict Zod schema. A validator checks:
+
+- Global slug uniqueness (interview slugs are prefixed by track, e.g. `dsa-two-sum`).
+- Lesson prerequisite and related slugs resolve to real documents.
+- Internal links only target allowed routes (`/learn/...`, `/labs/...`, `/compare/...`, etc.).
+- Each track has at least six lessons, one cheatsheet, and ten interview questions—so publishing a fancy blog post cannot leave a track hollow.
+
+That is how we keep the [/knowledge-graph](/knowledge-graph) view honest: it is generated from frontmatter, not hand-drawn marketing graphs that drift.
+
+## Human review vs automation
+
+`lastReviewed` is set when a technical editor re-reads a piece against current runtimes (Node LTS, Pydantic v2, Java 21, etc.). We do not auto-bump dates on typo fixes—only on substance changes. Changelog entries (see [/changelog](/changelog)) summarize what moved for learners.
+
+## Using the map as a learner
+
+Pick a track root from [/dsa](/dsa), [/system-design](/system-design), or [/ai](/ai). Follow prerequisites until a node feels easy, then branch via `related` sideways into interview mode. When a compare page exists—e.g. [LangChain vs LangGraph](/compare/langchain-vs-langgraph)—read both lesson anchors before deciding in your own stack.
+
+If you are mentoring, assign one **daily** plus one **interview** per week from the same track; the graph edges make misconceptions visible when someone aces hashing but misses sliding window bounds.
+
+## What we are not trying to be
+
+Not a certificate mill, not a live class replacement, not an exhaustive vendor manual. The map highlights **durable patterns** with enough links to go deep elsewhere. [/contribute](/contribute) documents how to propose new edges when you spot a missing bridge—say, from FastAPI Depends to Spring transaction proxies—without forking the taxonomy.
+
+The payoff is simple: fewer “I solved 400 arrays but froze on our queue consumer” stories. One graph, many formats, same underlying skills.
