@@ -1,0 +1,114 @@
+---
+title: "Big-O complexity analysis"
+slug: big-o-complexity
+kind: lesson
+track: dsa
+module: fundamentals
+order: 1
+difficulty: beginner
+prerequisites: []
+root: true
+tags:
+  - complexity
+  - big-o
+  - interviews
+estimatedMinutes: 14
+lastReviewed: "2026-11-01"
+summary: "Read a loop the way a CPU does: count dominant operations, drop constants, and say what happens when n grows."
+related:
+  - hashing
+  - two-pointers
+---
+
+## Why this matters
+
+Interviewers are not asking you to recite a table. They want to know whether your hash map "optimization" is actually `O(n)` extra memory for a `O(1)` lookup, and whether two nested loops are `O(n²)` or `O(n)` because the inner index only walks each element once.
+
+Big-O is a **growth rate**, not a stopwatch. It answers: if the input is 10× larger, does the work stay almost the same, grow linearly, or explode?
+
+## Mental model
+
+Treat the input size as `n`. Walk the code and count the **dominant** operation — the one that runs most often as `n` grows.
+
+- A single loop over `n` items is `O(n)`.
+- A loop whose bounds shrink by half each time is `O(log n)`.
+- Nested independent loops over `n` are `O(n²)`.
+- Hash insert/lookup is `O(1)` average, `O(n)` worst case when everything collides.
+
+Constants and slower terms vanish: `3n + 40` and `n + log n` are both `O(n)`. We keep the constants in capacity planning (system design), not in algorithm class.
+
+## Code
+
+```ts
+function linearScan(nums: number[], target: number): boolean {
+  for (const value of nums) {
+    if (value === target) return true;
+  }
+  return false;
+}
+
+function binarySearch(sorted: number[], target: number): boolean {
+  let lo = 0;
+  let hi = sorted.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (sorted[mid] === target) return true;
+    if (sorted[mid] < target) lo = mid + 1;
+    else hi = mid - 1;
+  }
+  return false;
+}
+
+function allPairs(nums: number[]): number {
+  let total = 0;
+  for (let i = 0; i < nums.length; i += 1) {
+    for (let j = 0; j < nums.length; j += 1) {
+      total += nums[i] * nums[j];
+    }
+  }
+  return total;
+}
+```
+
+`linearScan` is `O(n)` time, `O(1)` extra space. `binarySearch` is `O(log n)` time on a **already sorted** array. `allPairs` is `O(n²)`.
+
+Amortized vs worst case: `Array.push` is amortized `O(1)` because occasional resizes cost `O(n)` but happen rarely. Say "amortized" out loud when it matters.
+
+## Common mistakes
+
+- Calling a hash map `O(1)` without mentioning average case.
+- Forgetting that sorting first (`O(n log n)`) dominates a later `O(n)` scan.
+- Counting `if` statements instead of how often the inner work runs.
+- Mixing up extra memory: the output array of size `n` is `O(n)` space even if the algorithm is "in-place-ish".
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "A loop runs i from 0 to n-1, and inside, j runs from i to n-1. What is the time complexity?",
+      choices: ["O(n)", "O(n log n)", "O(n²)", "O(2^n)"],
+      answer: 2,
+      explanation: "The inner work runs n + (n-1) + ... + 1 = n(n+1)/2 times, which is O(n²)."
+    },
+    {
+      prompt: "Why is binary search not O(log n) on an unsorted array?",
+      choices: [
+        "Logarithms require even n",
+        "The algorithm depends on the midpoint ordering invariant",
+        "Arrays cannot be indexed in O(1)",
+        "Recursion always adds O(n)"
+      ],
+      answer: 1,
+      explanation: "Each comparison discards half the range only if the midpoint comparison is meaningful, which requires sorted order."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- "Walk me through the complexity of your solution, including extra arrays and recursion depth."
+- Follow-up: "What if this must run in O(1) extra space?"
+- Follow-up: "Is the hash map worst case acceptable for adversarial input?"
+
+Read [Hashing](/learn/dsa/patterns/hashing) next if you need a typical O(n) / O(1) trade, or [Two pointers](/learn/dsa/patterns/two-pointers) when you want O(n) time without a hash table.

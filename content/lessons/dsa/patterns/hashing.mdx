@@ -1,0 +1,113 @@
+---
+title: "Hash maps and the two-sum pattern"
+slug: hashing
+kind: lesson
+track: dsa
+module: patterns
+order: 2
+difficulty: beginner
+prerequisites:
+  - big-o-complexity
+root: false
+tags:
+  - hash-map
+  - two-sum
+  - patterns
+estimatedMinutes: 15
+lastReviewed: "2026-11-01"
+summary: "Trade O(n) memory for O(1) average lookups. Recognize complement search, counting, and deduplication problems."
+related:
+  - two-pointers
+---
+
+## Why this matters
+
+Many interview problems reduce to one question: **have I seen this value before, and does its partner complete the constraint?** A hash map answers that in average constant time per operation. Without it, you scan the array repeatedly and land in `O(n²)`.
+
+Hashing shows up in Two Sum, anagram grouping, substring frequency checks, and graph cycle detection with a visited set. Knowing when a map beats sorting or two pointers saves minutes on the clock.
+
+## Mental model
+
+Picture a **label drawer**: you hash a key to a bucket, store the value, and later ask “what did I save under this key?” Average case, insert and lookup are `O(1)` because buckets are sparse. Worst case, many keys collide into one bucket and you degrade toward `O(n)` per operation — say “average `O(1)`” in interviews unless they push on adversarial hashing.
+
+The **complement pattern**: for target `T` and current value `x`, the partner is `T - x`. As you scan left to right, check whether the partner is already in the map; if yes, you found a pair. If not, record `x` (and often its index) for future cells.
+
+## Code
+
+```ts
+function twoSum(nums: number[], target: number): [number, number] | null {
+  const indexByValue = new Map<number, number>();
+  for (let i = 0; i < nums.length; i += 1) {
+    const need = target - nums[i];
+    const j = indexByValue.get(need);
+    if (j !== undefined) {
+      return [j, i];
+    }
+    indexByValue.set(nums[i], i);
+  }
+  return null;
+}
+
+function firstDuplicateIndex(nums: number[]): number {
+  const seen = new Set<number>();
+  for (let i = 0; i < nums.length; i += 1) {
+    if (seen.has(nums[i])) {
+      return i;
+    }
+    seen.add(nums[i]);
+  }
+  return -1;
+}
+
+function groupAnagrams(words: string[]): string[][] {
+  const buckets = new Map<string, string[]>();
+  for (const word of words) {
+    const key = [...word].sort().join("");
+    const list = buckets.get(key) ?? [];
+    list.push(word);
+    buckets.set(key, list);
+  }
+  return [...buckets.values()];
+}
+```
+
+`twoSum` is `O(n)` time and `O(n)` space. `firstDuplicateIndex` is `O(n)` time, `O(n)` space for the set. `groupAnagrams` sorts each word (`O(k log k)` per word of length `k`); the map groups in `O(1)` average per insert.
+
+## Common mistakes
+
+- Returning indices before checking the complement (off-by-one on “use prior elements only”).
+- Using a plain object `{}` for keys that are numbers — keys stringify; `Map` avoids surprise.
+- Forgetting worst-case hash behavior when the problem guarantees distinct keys or a fixed alphabet (then average `O(1)` is safe to claim).
+- Storing only presence (`Set`) when you need the **index** or **count** — pick `Map<number, number>` for frequency.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "Two Sum with one pass and a hash map: why store nums[i] only after checking the complement?",
+      choices: [
+        "Maps reject duplicate keys",
+        "You must not pair an element with itself at the same index",
+        "Complements always equal the current value",
+        "Insertion order affects Big-O"
+      ],
+      answer: 1,
+      explanation: "If you insert before checking, nums[i] could match itself when need equals nums[i] and you have not yet seen a true second occurrence."
+    },
+    {
+      prompt: "What is the average time to solve Two Sum with a Map over n integers?",
+      choices: ["O(1)", "O(log n)", "O(n)", "O(n²)"],
+      answer: 2,
+      explanation: "One scan with O(1) average map ops per element gives O(n) total time and O(n) extra space."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- “Why not sort first and use two pointers?” — Sorting is `O(n log n)` and may scramble indices; hash map is `O(n)` when indices matter.
+- Follow-up: “What if the array is sorted and they only want values, not indices?” — Two pointers may beat extra memory.
+- Follow-up: “How would you handle duplicate triplets in 3Sum?” — Often sort + pointers with skip logic; hashing variants exist but watch duplicates.
+
+Continue with [Two pointers](/learn/dsa/patterns/two-pointers) when the array is sorted and you want `O(1)` extra space, or revisit [Big-O complexity](/learn/dsa/fundamentals/big-o-complexity) if tradeoffs between `O(n)` memory and time are still fuzzy.

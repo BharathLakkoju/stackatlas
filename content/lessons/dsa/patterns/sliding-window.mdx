@@ -1,0 +1,139 @@
+---
+title: "Sliding window on contiguous ranges"
+slug: sliding-window
+kind: lesson
+track: dsa
+module: patterns
+order: 4
+difficulty: intermediate
+prerequisites:
+  - two-pointers
+root: false
+tags:
+  - sliding-window
+  - subarray
+  - patterns
+estimatedMinutes: 16
+lastReviewed: "2026-11-01"
+summary: "Expand the right edge, shrink from the left when invalid. Track window state in O(1) or a small map for substring and subarray problems."
+related:
+  - dp-1d
+  - hashing
+---
+
+## Why this matters
+
+Problems asking for the **longest/shortest subarray** or **substring** with a constraint almost always want a sliding window: each element enters and leaves the window at most once, so total work stays `O(n)` instead of re-scanning every end from scratch.
+
+You see this in maximum sum subarray of size `k`, longest substring without repeating characters, minimum window substring, and “at most K distinct” variants. Recognizing “contiguous + optimize over all windows” is the signal.
+
+## Mental model
+
+Fix a **window** `[left, right]` on the array or string. Grow `right` to include new data; when a rule breaks (duplicate char, sum too large, count off), advance `left` until the window is valid again. State lives in a few variables or a frequency map — not a re-computation from scratch each time.
+
+Two flavors: **fixed size** `k` (window always length `k`, slide both edges together) and **variable size** (grow until invalid, shrink to restore validity, track best).
+
+## Code
+
+```ts
+function maxSumSubarrayOfSizeK(nums: number[], k: number): number {
+  if (k <= 0 || nums.length < k) {
+    return 0;
+  }
+  let windowSum = 0;
+  for (let i = 0; i < k; i += 1) {
+    windowSum += nums[i];
+  }
+  let best = windowSum;
+  for (let right = k; right < nums.length; right += 1) {
+    windowSum += nums[right] - nums[right - k];
+    if (windowSum > best) {
+      best = windowSum;
+    }
+  }
+  return best;
+}
+
+function lengthOfLongestUniqueSubstring(s: string): number {
+  const lastIndex = new Map<string, number>();
+  let left = 0;
+  let best = 0;
+  for (let right = 0; right < s.length; right += 1) {
+    const ch = s[right];
+    const prev = lastIndex.get(ch);
+    if (prev !== undefined && prev >= left) {
+      left = prev + 1;
+    }
+    lastIndex.set(ch, right);
+    const len = right - left + 1;
+    if (len > best) {
+      best = len;
+    }
+  }
+  return best;
+}
+
+function minSubarrayLenAtLeastTarget(nums: number[], target: number): number {
+  let left = 0;
+  let sum = 0;
+  let best = Number.POSITIVE_INFINITY;
+  for (let right = 0; right < nums.length; right += 1) {
+    sum += nums[right];
+    while (sum >= target) {
+      const len = right - left + 1;
+      if (len < best) {
+        best = len;
+      }
+      sum -= nums[left];
+      left += 1;
+    }
+  }
+  return best === Number.POSITIVE_INFINITY ? 0 : best;
+}
+```
+
+Fixed window: `O(n)` time, `O(1)` space. Longest unique substring: `O(n)` time, up to `O(min(n, alphabet))` map space. Minimum length with sum ≥ target (positive integers): `O(n)` time because `left` only advances.
+
+## Common mistakes
+
+- Shrinking the window when you should only expand (wrong invariant for “longest” vs “shortest”).
+- Using sliding window on **non-contiguous** subsequence problems — that is usually DP, not a window.
+- Forgetting to update “best” when the window becomes valid on shrink, not only on expand.
+- Integer windows with negative numbers: sum-based shrink logic fails; you may need prefix sums or DP instead.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "Why is variable sliding window often O(n) even with a while loop inside the for loop?",
+      choices: [
+        "The while loop runs at most log n times",
+        "Each index moves left at most once across the whole algorithm",
+        "JavaScript optimizes nested loops",
+        "The map size is constant"
+      ],
+      answer: 1,
+      explanation: "left and right each traverse the array at most once; total pointer moves are O(n)."
+    },
+    {
+      prompt: "Longest substring without repeating characters: why store lastIndex of each character?",
+      choices: [
+        "To sort characters in the window",
+        "To jump left past the previous duplicate in O(1)",
+        "To count windows of size k",
+        "To binary search on the alphabet"
+      ],
+      answer: 1,
+      explanation: "When a repeat appears inside the window, left moves to lastIndex[ch]+1 without scanning character by character."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- “Minimum window substring” — expand until all targets covered, shrink while still covered, track counts in a map.
+- Follow-up: “At most K distinct integers” — shrink when distinct count exceeds K; track longest valid window.
+- Contrast with [1D dynamic programming](/learn/dsa/dynamic-programming/dp-1d) when the constraint is not contiguous or you need optimal substructure over non-adjacent choices.
+
+Practice variable windows on strings, then read [1D dynamic programming](/learn/dsa/dynamic-programming/dp-1d) for problems where the best answer is not a single contiguous slice.
