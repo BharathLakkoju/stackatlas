@@ -1,0 +1,135 @@
+---
+title: "Retrieval-augmented generation (RAG)"
+slug: rag
+kind: lesson
+track: ai
+module: rag
+order: 3
+difficulty: intermediate
+prerequisites:
+  - embeddings
+tags:
+  - rag
+  - retrieval
+  - chunking
+estimatedMinutes: 18
+lastReviewed: "2026-11-01"
+summary: "Retrieve grounded passages, pack them into context, and generate answers with citations — measure faithfulness, not vibes."
+related:
+  - evals-guardrails
+---
+
+## Why this matters
+
+Bare LLMs hallucinate policy dates and product specs. RAG grounds answers in your corpus: chunk documents, embed, retrieve on user questions, inject top passages into the prompt, then generate. Quality lives in chunk boundaries, metadata filters, rerankers, and evals — not a bigger model alone.
+
+Production RAG also handles access control (per-user filters), PII redaction, and stale document refresh.
+
+## Mental model
+
+Stages:
+
+1. **Ingest**: parse PDF/HTML, chunk with overlap, attach metadata (source, section).
+2. **Index**: [embeddings](/learn/ai/foundations/embeddings) into vector store + optional keyword index.
+3. **Retrieve**: hybrid search, top-k, MMR diversity, cross-encoder rerank.
+4. **Generate**: system prompt demands cite sources; refuse if context insufficient.
+5. **Evaluate**: faithfulness, answer relevance, context precision (see [evals and guardrails](/learn/ai/production/evals-guardrails)).
+
+Context window budget: reserve tokens for instructions, citations, and completion — not only chunks.
+
+Log retrieval scores and chunk IDs with each answer so support can replay the exact context shown to the model. Refresh indexes incrementally when source docs change instead of rebuilding the entire corpus nightly unless size is tiny.
+
+## Code
+
+```python
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Chunk:
+    chunk_id: str
+    text: str
+    source: str
+
+
+def retrieve(query: str, index: list[Chunk], limit: int) -> list[Chunk]:
+    ranked = sorted(index, key=lambda c: score(query, c.text), reverse=True)
+    return ranked[:limit]
+
+
+def score(query: str, text: str) -> float:
+    query_terms = set(query.lower().split())
+    text_terms = set(text.lower().split())
+    overlap = len(query_terms & text_terms)
+    return float(overlap)
+
+
+def build_prompt(query: str, chunks: list[Chunk]) -> str:
+    context_blocks = []
+    for chunk in chunks:
+        context_blocks.append(f"[{chunk.source}] {chunk.text}")
+    context = "\n\n".join(context_blocks)
+    return (
+        "Answer using only the context. Cite sources.\n\n"
+        f"Context:\n{context}\n\nQuestion: {query}\nAnswer:"
+    )
+
+
+def main() -> None:
+    index = [
+        Chunk("1", "Refunds within thirty days of purchase.", "policy.md"),
+        Chunk("2", "Shipping is free over fifty dollars.", "policy.md"),
+    ]
+    chunks = retrieve("refund window", index, 2)
+    prompt = build_prompt("What is the refund window?", chunks)
+    print(prompt)
+
+
+if __name__ == "__main__":
+    main()
+```
+
+Tune chunk size in the [RAG chunking lab](/labs/rag-chunking). Log retrieval IDs with each answer for debugging user reports.
+
+## Common mistakes
+
+- No refusal path when retrieval scores are low (confident hallucination).
+- Dumping ten huge chunks that crowd out the actual answer sentence.
+- Skipping ACL metadata so users see other tenants' docs.
+- Evaluating only on happy-path questions copied from training docs.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "Primary purpose of chunk overlap in RAG ingest?",
+      choices: [
+        "Increase embedding dimension",
+        "Reduce boundary cuts that split facts across chunks",
+        "Disable vector search",
+        "Force JSON output"
+      ],
+      answer: 1,
+      explanation: "Overlap helps keep sentences that span chunk borders retrievable in at least one chunk."
+    },
+    {
+      prompt: "Model answers confidently but context lacks the fact. Best mitigation?",
+      choices: [
+        "Raise temperature",
+        "Add score threshold and instruct model to abstain",
+        "Remove metadata",
+        "Use longer completions only"
+      ],
+      answer: 1,
+      explanation: "Low retrieval confidence plus abstain instructions reduces ungrounded answers."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- "How do you debug a wrong RAG answer in production?"
+- Follow-up: "When add a reranker versus enlarge k?"
+
+Continue with [Evals and guardrails](/learn/ai/production/evals-guardrails) and [Tool-using agents](/learn/ai/agents/tool-using-agents) when retrieval is not enough.

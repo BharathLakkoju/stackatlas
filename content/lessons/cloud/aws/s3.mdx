@@ -1,0 +1,119 @@
+---
+title: "Amazon S3 objects and security"
+slug: s3
+kind: lesson
+track: cloud
+module: aws
+order: 2
+difficulty: beginner
+prerequisites:
+  - iam
+tags:
+  - s3
+  - storage
+  - encryption
+estimatedMinutes: 16
+lastReviewed: "2026-11-01"
+summary: "Buckets are global names, objects are key paths — lock them down with policies, encryption, and lifecycle rules before data grows."
+related:
+  - lambda-api-gateway
+---
+
+## Why this matters
+
+S3 holds backups, user uploads, analytics lakes, and static sites. Misconfigured **Block Public Access** settings still cause breaches. Object storage is cheap until egress and incomplete multipart uploads accumulate. Production teams version critical buckets, enforce SSE-KMS or SSE-S3, and use lifecycle transitions to Infrequent Access or Glacier for archives.
+
+S3 is not a POSIX filesystem: listing with prefix, consistency model, and request rate per prefix still matter for hot keys.
+
+## Mental model
+
+- **Bucket**: container; name is globally unique; Region chosen at creation.
+- **Object**: key + version ID + metadata; up to 5 TiB per object via multipart.
+- **ACLs**: legacy; prefer bucket policies and IAM.
+- **Pre-signed URLs**: time-limited access without making the bucket public.
+
+Strong settings:
+
+- Block all public access unless a deliberate static site pattern.
+- Default encryption on the bucket.
+- Versioning for rollback; MFA delete for compliance buckets.
+- Lifecycle: expire incomplete multipart uploads after seven days.
+
+## Code
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+BUCKET="stackatlas-prod-uploads"
+REGION="us-east-1"
+FILE_PATH="/tmp/hello.txt"
+
+printf 'stackatlas\n' > "${FILE_PATH}"
+
+aws s3api create-bucket \
+  --bucket "${BUCKET}" \
+  --region "${REGION}" \
+  --create-bucket-configuration LocationConstraint="${REGION}" 2>/dev/null || true
+
+aws s3api put-public-access-block \
+  --bucket "${BUCKET}" \
+  --public-access-block-configuration \
+  BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+
+aws s3 cp "${FILE_PATH}" "s3://${BUCKET}/docs/hello.txt" \
+  --sse AES256
+
+aws s3api head-object --bucket "${BUCKET}" --key "docs/hello.txt"
+```
+
+For `us-east-1`, omit `LocationConstraint` when creating the bucket. Lambda and API Gateway often read from S3 via execution roles defined in [IAM](/learn/cloud/aws/iam).
+
+Request metrics and server access logging help prove who touched sensitive prefixes during audits. For multi-Region Replication on versioned buckets, rehearse restores quarterly so RTO numbers in runbooks are realistic.
+
+S3 Object Lock in compliance mode protects regulated logs from accidental deletes by privileged admins. Pair with inventory reports to find unencrypted legacy prefixes before auditors do.
+
+Use distinct buckets or prefixes per data classification so lifecycle rules differ between analytics lakes and customer PII exports without risky bucket-wide policies.
+
+## Common mistakes
+
+- Relying on "security by obscurity" object URLs.
+- One shared bucket for dev and prod without prefix isolation and separate policies.
+- Ignoring KMS key policies when using SSE-KMS (S3 IAM is not enough).
+- Application assumes read-after-write consistency for LIST immediately after PUT (edge cases with versioning off).
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "You need temporary download links for private objects. Usual approach?",
+      choices: [
+        "Make bucket public-read",
+        "Pre-signed URL with short expiry",
+        "Store objects in /tmp on EC2 only",
+        "Disable encryption"
+      ],
+      answer: 1,
+      explanation: "Pre-signed URLs grant time-bound access using SigV4 without exposing the bucket."
+    },
+    {
+      prompt: "Block Public Access enabled on the bucket. Can a public bucket policy still open data?",
+      choices: [
+        "No, block settings prevent public ACLs and policies",
+        "Yes, policies override block",
+        "Only for Glacier",
+        "Only in us-west-2"
+      ],
+      answer: 0,
+      explanation: "Account and bucket Block Public Access settings restrict public ACLs and bucket policies that grant public access."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- "How would you replicate critical objects across Regions?"
+- Follow-up: "S3 event notification to Lambda — what IAM is required?"
+
+Continue to [Lambda and API Gateway](/learn/cloud/aws/lambda-api-gateway) for event-driven patterns built on the same buckets.

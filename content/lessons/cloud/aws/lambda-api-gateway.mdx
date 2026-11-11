@@ -1,0 +1,123 @@
+---
+title: "Lambda behind API Gateway"
+slug: lambda-api-gateway
+kind: lesson
+track: cloud
+module: aws
+order: 3
+difficulty: intermediate
+prerequisites:
+  - iam
+tags:
+  - lambda
+  - api-gateway
+  - serverless
+estimatedMinutes: 17
+lastReviewed: "2026-11-01"
+summary: "HTTP APIs on API Gateway invoke Lambda with IAM-scoped roles — design for cold starts, timeouts, and idempotent handlers."
+related:
+  - s3
+  - cicd
+---
+
+## Why this matters
+
+Serverless HTTP endpoints scale to zero and ramp with traffic, but the integration surface is split: API Gateway routing, Lambda concurrency limits, IAM execution roles, and downstream [S3](/learn/cloud/aws/s3) or database calls. A p99 spike is often cold start plus VPC ENI setup, not your handler logic.
+
+Treat each invocation as stateless; persist idempotency keys in DynamoDB or RDS when clients retry POSTs.
+
+## Mental model
+
+- **HTTP API** (v2): cheaper and simpler than REST API for most JSON services.
+- **Lambda integration**: proxy passes full request; mapping templates optional on REST.
+- **Execution role**: CloudWatch Logs + your AWS API calls (principle of least privilege from [IAM](/learn/cloud/aws/iam)).
+- **Concurrency**: account reserve; throttling returns 429 to clients.
+
+Cold start mitigations: smaller deployment packages, arm64 Graviton, provisioned concurrency on hot routes, avoid huge classpath in Java unless using SnapStart (Java only).
+
+## Code
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+FUNCTION_NAME="stackatlas-hello"
+ROLE_ARN="arn:aws:iam::123456789012:role/stackatlas-lambda-basic"
+HANDLER="index.handler"
+RUNTIME="nodejs20.x"
+ZIP="/tmp/lambda.zip"
+
+mkdir -p /tmp/lambda-src
+cat > /tmp/lambda-src/index.mjs <<'JS'
+export const handler = async (event) => {
+  const name = event.queryStringParameters?.name ?? "world";
+  return {
+    statusCode: 200,
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ message: `Hello, ${name}` })
+  };
+};
+JS
+
+(cd /tmp/lambda-src && zip -q -r "${ZIP}" .)
+
+aws lambda create-function \
+  --function-name "${FUNCTION_NAME}" \
+  --runtime "${RUNTIME}" \
+  --role "${ROLE_ARN}" \
+  --handler "${HANDLER}" \
+  --zip-file "fileb://${ZIP}" \
+  --timeout 10 \
+  --memory-size 256
+
+echo "Lambda ${FUNCTION_NAME} packaged"
+```
+
+Wire the function to HTTP API routes with `aws apigatewayv2 create-integration` and `create-route`. Deploy stages (`$default` or named) so clients hit a stable URL.
+
+Enable Lambda Powertools or structured JSON logging so request IDs correlate across API Gateway, Lambda, and downstream calls. Use provisioned concurrency on login or checkout routes if cold starts violate SLOs after optimization.
+
+Configure API Gateway throttling per route and per account stage so one noisy tenant cannot exhaust shared concurrency. Keep handler packages under 50 MB zipped when possible; split heavy dependencies into a separate sync worker if bundling fights the timeout budget.
+
+## Common mistakes
+
+- Lambda in VPC without enough subnets or security groups (slow cold starts).
+- Returning non-JSON bodies without matching `Content-Type`.
+- 30 second API Gateway timeout with 60 second Lambda timeout (client sees 504 first).
+- Logging full authorization headers.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "Client receives 429 from API Gateway during a traffic spike. Likely cause?",
+      choices: [
+        "S3 bucket full",
+        "Lambda concurrency throttling",
+        "Wrong Java version",
+        "Route 53 TTL"
+      ],
+      answer: 1,
+      explanation: "Reserved and account concurrency limits cause throttling when simultaneous executions exceed the cap."
+    },
+    {
+      prompt: "Why give Lambda its own IAM role instead of reusing a human user key?",
+      choices: [
+        "Users cannot invoke API Gateway",
+        "Roles provide temporary credentials scoped to the function",
+        "Lambda does not support IAM",
+        "Roles disable CloudWatch"
+      ],
+      answer: 1,
+      explanation: "The execution role grants least-privilege permissions without embedding static access keys."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- "When would you avoid Lambda for this API?"
+- Follow-up: "How does idempotency change retry behavior?"
+
+Automate deploys with [CI/CD](/learn/cloud/devops/cicd) and compare container platforms in [ECS vs EKS](/compare/ecs-vs-eks) when traffic grows past pure serverless.

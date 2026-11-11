@@ -1,0 +1,143 @@
+---
+title: "AWS IAM identities and least privilege"
+slug: iam
+kind: lesson
+track: cloud
+module: aws
+order: 1
+difficulty: beginner
+prerequisites: []
+root: true
+tags:
+  - iam
+  - aws
+  - policies
+estimatedMinutes: 15
+lastReviewed: "2026-11-01"
+summary: "Attach least-privilege policies to roles humans and workloads assume — not long-lived user access keys on laptops."
+related:
+  - s3
+  - vpc
+  - lambda-api-gateway
+---
+
+## Why this matters
+
+Every S3 leak headline started with credentials that could read too much. IAM is AWS’s authorization plane: users (discouraged for apps), groups, roles, and policies. Production workloads should assume **roles** via instance profiles, EKS service accounts (IRSA), or Lambda execution roles — never embed access keys in images.
+
+Least privilege is iterative: start narrow, widen when CloudTrail shows `AccessDenied` you actually need.
+
+## Mental model
+
+- **Principal**: who (user, role, service).
+- **Action**: `s3:GetObject`, `lambda:InvokeFunction`.
+- **Resource**: ARN pattern.
+- **Condition**: `aws:MultiFactorAuthPresent`, source IP, tags.
+
+Policy types:
+
+- **Identity-based**: attached to user/role/group.
+- **Resource-based**: S3 bucket policy, KMS key policy.
+- **Permission boundaries** and **SCPs** (Organizations): caps that cannot be exceeded.
+
+Roles use **trust policy** (who can assume) + **permissions policy** (what they can do).
+
+## Code
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROLE_NAME="stackatlas-app"
+POLICY_NAME="stackatlas-s3-read"
+BUCKET_ARN="arn:aws:s3:::stackatlas-data"
+
+cat > /tmp/trust-policy.json <<'JSON'
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": { "Service": "lambda.amazonaws.com" },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+JSON
+
+cat > /tmp/s3-read.json <<JSON
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:ListBucket"],
+      "Resource": [
+        "${BUCKET_ARN}",
+        "${BUCKET_ARN}/*"
+      ]
+    }
+  ]
+}
+JSON
+
+aws iam create-role \
+  --role-name "${ROLE_NAME}" \
+  --assume-role-policy-document file:///tmp/trust-policy.json
+
+aws iam put-role-policy \
+  --role-name "${ROLE_NAME}" \
+  --policy-name "${POLICY_NAME}" \
+  --policy-document file:///tmp/s3-read.json
+
+echo "Created role ${ROLE_NAME}"
+```
+
+Use IAM Access Analyzer and `aws iam simulate-principal-policy` before shipping. Enable CloudTrail organization trails so denied calls are visible during incident response.
+
+Rotate human access through SSO federation; break-glass admin roles should be rare, monitored, and require MFA. Tag policies with `Environment` and `Service` so SCPs and CI OIDC conditions can scope blast radius without hand-editing hundreds of ARNs.
+
+Federation into AWS typically flows through IAM Identity Center or a corporate IdP; map groups to permission sets instead of cloning IAM users per engineer. Document emergency revocation steps before an access key leaks because panic edits often widen policies instead of narrowing them.
+
+## Common mistakes
+
+- `AdministratorAccess` on CI roles "to save time".
+- Wildcard `resources: ["*"]` with `s3:*`.
+- Long-lived IAM users for applications instead of roles.
+- Forgetting **external ID** when third parties assume roles into your account.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "Lambda function needs S3 read. Best credential pattern?",
+      choices: [
+        "Embed access keys in environment variables",
+        "Execution role with s3:GetObject on the bucket",
+        "Use root account keys in Secrets Manager",
+        "Disable IAM and use public buckets"
+      ],
+      answer: 1,
+      explanation: "Lambda assumes an execution role; temporary credentials are automatic with no static keys."
+    },
+    {
+      prompt: "What does a role trust policy define?",
+      choices: [
+        "Which API actions are allowed on S3",
+        "Which principals can call sts:AssumeRole",
+        "The VPC-CIDR for the account",
+        "S3 object encryption algorithm"
+      ],
+      answer: 1,
+      explanation: "Trust policy controls who may assume the role; permissions policy controls what they can do after."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- "How do you grant cross-account S3 access without sharing keys?"
+- Follow-up: "What is an SCP versus an identity policy?"
+
+Next: [Amazon S3](/learn/cloud/aws/s3), [VPC](/learn/cloud/aws/vpc), or [Lambda with API Gateway](/learn/cloud/aws/lambda-api-gateway). See the [cloud cheatsheet](/cheatsheets/cloud) for ARN syntax.
