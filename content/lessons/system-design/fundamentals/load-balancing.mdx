@@ -1,0 +1,143 @@
+---
+title: "Load balancing and health checks"
+slug: load-balancing
+kind: lesson
+track: system-design
+module: fundamentals
+order: 4
+difficulty: intermediate
+prerequisites:
+  - scalability-fundamentals
+root: false
+tags:
+  - load-balancer
+  - l7
+  - health-checks
+estimatedMinutes: 15
+lastReviewed: "2026-11-01"
+summary: "Spread traffic across healthy backends with L4/L7 balancers, sensible algorithms, and health checks that match real dependencies."
+related:
+  - url-shortener
+  - rate-limiting
+---
+
+## Why this matters
+
+Horizontal scaling assumes something **distributes** requests. Load balancers hide individual machine failures, smooth deploys (drain connections), and can terminate TLS. Weak health checks cause “flapping” instances that accept traffic before warmed up, or blackhole traffic when only a non-critical dependency is down.
+
+Interview sketches need a tier: DNS → global LB → regional L7 → app pool → DB. Mention **sticky sessions** only when state was not externalized.
+
+## Mental model
+
+**Layer 4** balances TCP connections (fast, IP/port). **Layer 7** understands HTTP (host, path, cookies) and can route API vs static.
+
+Algorithms: **round robin** (even spread), **least connections** (long requests), **consistent hashing** (sticky by key without server affinity cookies — pairs with caches and sharded data). Health checks should hit an endpoint that verifies critical deps (DB ping), not always `200 OK` from nginx defaults.
+
+## Code
+
+```ts
+type Backend = {
+  id: string;
+  healthy: boolean;
+  activeConnections: number;
+};
+
+function pickRoundRobin(backends: Backend[], cursor: { i: number }): Backend | null {
+  const pool = backends.filter((b) => b.healthy);
+  if (pool.length === 0) {
+    return null;
+  }
+  const chosen = pool[cursor.i % pool.length];
+  cursor.i += 1;
+  return chosen;
+}
+
+function pickLeastConnections(backends: Backend[]): Backend | null {
+  const pool = backends.filter((b) => b.healthy);
+  if (pool.length === 0) {
+    return null;
+  }
+  let best = pool[0];
+  for (const b of pool) {
+    if (b.activeConnections < best.activeConnections) {
+      best = b;
+    }
+  }
+  return best;
+}
+
+function consistentHashRing(keys: string[], buckets: string[]): Map<string, string> {
+  const ring = buckets.slice().sort();
+  const assignment = new Map<string, string>();
+  for (const key of keys) {
+    let lo = 0;
+    let hi = ring.length - 1;
+    const h = hashString(key);
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (hashString(ring[mid]) < h) {
+        lo = mid + 1;
+      } else {
+        hi = mid;
+      }
+    }
+    assignment.set(key, ring[lo % ring.length]);
+  }
+  return assignment;
+}
+
+function hashString(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i += 1) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+```
+
+Consistent hashing minimizes remapping when a node is added — important for distributed caches and rate limit counters.
+
+## Common mistakes
+
+- Health check only checks process up, not DB — bad instances stay in rotation.
+- Session stickiness without fallback when a node dies — users log out or lose carts.
+- TLS termination misconfiguration (mixed HTTP/HTTPS links, lost client certs).
+- Ignoring **connection draining** on deploy — in-flight requests get cut.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "Least-connections balancing helps most when:",
+      choices: [
+        "All requests take equal time",
+        "Some requests hold connections much longer than others",
+        "Backends are unhealthy",
+        "DNS TTL is zero"
+      ],
+      answer: 1,
+      explanation: "Long-lived requests otherwise pile onto the next round-robin host."
+    },
+    {
+      prompt: "L7 load balancing can do which L4 typically cannot without extra proxies?",
+      choices: [
+        "Forward TCP packets",
+        "Route by HTTP path to different service pools",
+        "Track IP addresses",
+        "Open server ports"
+      ],
+      answer: 1,
+      explanation: "L7 understands HTTP semantics for path/host based routing."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- “Why not DNS round robin only?” — slow failover, no health awareness, client caching.
+- Blue/green and canary: weighted routes at L7.
+- Distributed rate limits often need consistent hashing — see the [consistent hashing lab](/labs/consistent-hashing).
+
+Continue with [Rate limiting](/learn/system-design/fundamentals/rate-limiting) after load balancing, and apply both in the [URL shortener](/learn/system-design/case-studies/url-shortener) design.
