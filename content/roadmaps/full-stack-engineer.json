@@ -1,0 +1,112 @@
+{
+  "slug": "full-stack-engineer",
+  "title": "Full Stack Engineer",
+  "role": "Full Stack Engineer",
+  "summary": "Master the JS/TS runtime and frameworks, core DSA patterns, caching in distributed systems, and containerized delivery.",
+  "estimatedWeeks": 14,
+  "nodes": [
+    {
+      "id": "start",
+      "label": "Runtime & language core",
+      "description": "Understand how JavaScript executes before frameworks and full-stack patterns.",
+      "children": ["event-loop", "closures"]
+    },
+    {
+      "id": "event-loop",
+      "label": "Event loop",
+      "lessonSlug": "event-loop",
+      "description": "Trace macrotasks, microtasks, and rendering for responsive UIs and APIs.",
+      "children": ["ts-generics-narrowing", "node-streams"]
+    },
+    {
+      "id": "closures",
+      "label": "Closures & scope",
+      "lessonSlug": "closures",
+      "description": "Capture lexical state safely in callbacks, hooks, and middleware.",
+      "children": ["ts-generics-narrowing"]
+    },
+    {
+      "id": "ts-generics-narrowing",
+      "label": "TS generics & narrowing",
+      "lessonSlug": "ts-generics-narrowing",
+      "description": "Type components, handlers, and API contracts without unsafe casts.",
+      "children": ["react-rendering"]
+    },
+    {
+      "id": "node-streams",
+      "label": "Node streams",
+      "lessonSlug": "node-streams",
+      "description": "Process large payloads with backpressure on server routes.",
+      "children": ["dsa-core"]
+    },
+    {
+      "id": "dsa-core",
+      "label": "Interview DSA core",
+      "description": "Pattern-first structures and algorithms paired with product shipping.",
+      "children": ["big-o-complexity", "sliding-window"]
+    },
+    {
+      "id": "big-o-complexity",
+      "label": "Big-O & complexity",
+      "lessonSlug": "big-o-complexity",
+      "description": "Estimate complexity for UI lists, API pagination, and search.",
+      "children": ["hashing", "bfs-dfs"]
+    },
+    {
+      "id": "sliding-window",
+      "label": "Sliding window",
+      "lessonSlug": "sliding-window",
+      "description": "Maintain running windows for subarrays and streaming metrics.",
+      "children": ["hashing"]
+    },
+    {
+      "id": "hashing",
+      "label": "Hashing patterns",
+      "lessonSlug": "hashing",
+      "description": "Index client state, cache keys, and dedupe server-side collections.",
+      "children": ["bfs-dfs"]
+    },
+    {
+      "id": "bfs-dfs",
+      "label": "BFS & DFS",
+      "lessonSlug": "bfs-dfs",
+      "description": "Walk trees in the DOM, routers, and permission graphs.",
+      "children": ["react-rendering"]
+    },
+    {
+      "id": "react-rendering",
+      "label": "React rendering",
+      "lessonSlug": "react-rendering",
+      "description": "Control reconciliation, memoization, and hydration behavior.",
+      "children": ["nextjs-app-router"]
+    },
+    {
+      "id": "nextjs-app-router",
+      "label": "Next.js App Router",
+      "lessonSlug": "nextjs-app-router",
+      "description": "Ship full-stack routes with server components and data fetching.",
+      "children": ["caching"]
+    },
+    {
+      "id": "caching",
+      "label": "Caching layers",
+      "lessonSlug": "caching",
+      "description": "Layer CDN, edge, and application caches behind your Next.js app.",
+      "children": ["docker-multistage"]
+    },
+    {
+      "id": "docker-multistage",
+      "label": "Multi-stage Docker images",
+      "lessonSlug": "docker-multistage",
+      "description": "Package Node apps for consistent local and production runs.",
+      "children": ["cicd"]
+    },
+    {
+      "id": "cicd",
+      "label": "CI/CD pipelines",
+      "lessonSlug": "cicd",
+      "description": "Gate merges with lint, test, preview deploys, and production promote.",
+      "children": []
+    }
+  ]
+}

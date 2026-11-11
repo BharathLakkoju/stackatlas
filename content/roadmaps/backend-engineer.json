@@ -1,0 +1,120 @@
+{
+  "slug": "backend-engineer",
+  "title": "Backend Engineer",
+  "role": "Backend Engineer",
+  "summary": "From core DSA patterns through async Python APIs, system design tradeoffs, and shipping services on AWS with Docker and CI/CD.",
+  "estimatedWeeks": 12,
+  "nodes": [
+    {
+      "id": "start",
+      "label": "Core foundations",
+      "description": "Build interview-ready problem-solving habits before you design or ship services.",
+      "children": ["big-o-complexity"]
+    },
+    {
+      "id": "big-o-complexity",
+      "label": "Big-O & complexity",
+      "lessonSlug": "big-o-complexity",
+      "description": "Reason about time and space before you optimize or pick data structures.",
+      "children": ["hashing", "two-pointers"]
+    },
+    {
+      "id": "hashing",
+      "label": "Hashing patterns",
+      "lessonSlug": "hashing",
+      "description": "Use maps and sets for lookups, deduplication, and frequency counting.",
+      "children": ["two-pointers"]
+    },
+    {
+      "id": "two-pointers",
+      "label": "Two pointers",
+      "lessonSlug": "two-pointers",
+      "description": "Shrink search space on sorted arrays and linked structures.",
+      "children": ["bfs-dfs"]
+    },
+    {
+      "id": "bfs-dfs",
+      "label": "BFS & DFS",
+      "lessonSlug": "bfs-dfs",
+      "description": "Traverse graphs and grids for connectivity, shortest paths, and cycles.",
+      "children": ["dp-1d"]
+    },
+    {
+      "id": "dp-1d",
+      "label": "1D dynamic programming",
+      "lessonSlug": "dp-1d",
+      "description": "Recognize overlapping subproblems and build bottom-up tabulations.",
+      "children": ["gil", "async-await"]
+    },
+    {
+      "id": "gil",
+      "label": "CPython & the GIL",
+      "lessonSlug": "gil",
+      "description": "Understand interpreter limits before scaling CPU-bound Python work.",
+      "children": ["fastapi-di"]
+    },
+    {
+      "id": "async-await",
+      "label": "Async & await",
+      "lessonSlug": "async-await",
+      "description": "Model concurrent I/O without blocking threads in network-heavy APIs.",
+      "children": ["fastapi-di"]
+    },
+    {
+      "id": "fastapi-di",
+      "label": "FastAPI dependency injection",
+      "lessonSlug": "fastapi-di",
+      "description": "Structure routes, dependencies, and testable service boundaries.",
+      "children": ["pydantic-v2", "sqlalchemy-async"]
+    },
+    {
+      "id": "pydantic-v2",
+      "label": "Pydantic v2 models",
+      "lessonSlug": "pydantic-v2",
+      "description": "Validate request and response payloads with strict, fast schemas.",
+      "children": ["scalability-fundamentals"]
+    },
+    {
+      "id": "sqlalchemy-async",
+      "label": "Async SQLAlchemy",
+      "lessonSlug": "sqlalchemy-async",
+      "description": "Persist data without blocking the event loop in production APIs.",
+      "children": ["scalability-fundamentals"]
+    },
+    {
+      "id": "scalability-fundamentals",
+      "label": "Scalability fundamentals",
+      "lessonSlug": "scalability-fundamentals",
+      "description": "Partition state, scale reads and writes, and plan for failure domains.",
+      "children": ["caching", "url-shortener"]
+    },
+    {
+      "id": "caching",
+      "label": "Caching layers",
+      "lessonSlug": "caching",
+      "description": "Cut latency and load with TTLs, invalidation, and stampede control.",
+      "children": ["url-shortener"]
+    },
+    {
+      "id": "url-shortener",
+      "label": "URL shortener case study",
+      "lessonSlug": "url-shortener",
+      "description": "Apply hashing, storage, and redirect paths in a classic design.",
+      "children": ["docker-multistage"]
+    },
+    {
+      "id": "docker-multistage",
+      "label": "Multi-stage Docker images",
+      "lessonSlug": "docker-multistage",
+      "description": "Ship slim, reproducible containers for APIs and workers.",
+      "children": ["cicd"]
+    },
+    {
+      "id": "cicd",
+      "label": "CI/CD pipelines",
+      "lessonSlug": "cicd",
+      "description": "Automate test, build, and deploy with safe rollbacks.",
+      "children": []
+    }
+  ]
+}
