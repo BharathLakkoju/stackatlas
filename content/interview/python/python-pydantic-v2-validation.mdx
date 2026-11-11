@@ -1,0 +1,34 @@
+---
+title: "Pydantic v2 validation"
+slug: python-pydantic-v2-validation
+kind: interview
+track: python
+difficulty: intermediate
+tags:
+  - pydantic
+  - validation
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "model_validate, Field constraints, model_validator mode before/after, and JSON schema export."
+related:
+  - pydantic-v2
+followUps:
+  - "Strict mode?"
+  - "Serialization aliases?"
+---
+How do you validate API input with Pydantic v2?
+
+## Model answer
+
+Define BaseModel with typed fields and Field constraints. model_validate parses dict; model_validate_json for bytes. @field_validator and @model_validator(mode='after') for cross-field rules. Fail fast at HTTP boundary; map ValidationError to 422. model_dump for response serialization with by_alias for client camelCase. ConfigDict(strict=True) rejects coercion. Validators run in Rust core—much faster than v1.
+
+
+## Follow-ups
+
+### Strict mode?
+
+Strict disallows implicit str->int coercion—safer public APIs.
+
+### Serialization aliases?
+
+serialization_alias vs validation_alias for read/write field name differences.

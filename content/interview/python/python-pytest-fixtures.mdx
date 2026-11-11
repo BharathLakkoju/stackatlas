@@ -1,0 +1,34 @@
+---
+title: "pytest fixtures"
+slug: python-pytest-fixtures
+kind: interview
+track: python
+difficulty: intermediate
+tags:
+  - pytest
+  - testing
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Scoped setup/teardown with yield; function vs session scope for DB and app clients."
+related:
+  - fastapi-di
+followUps:
+  - "autouse?"
+  - "conftest.py hierarchy?"
+---
+Explain fixture scope and yield teardown.
+
+## Model answer
+
+Fixtures inject dependencies into tests by name. scope=function default new each test; module/session share expensive setup. yield provides teardown after tests run—even on failure. conftest.py fixtures discover hierarchically. autouse applies without parameter for DB rollback blanket. Use factory fixtures returning callable for parameterized data. Avoid global mutable singletons tests share accidentally.
+
+
+## Follow-ups
+
+### autouse?
+
+autouse for automatic DB transaction rollback per test.
+
+### conftest.py hierarchy?
+
+Nearest conftest wins; organize per package.

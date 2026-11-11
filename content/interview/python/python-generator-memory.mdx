@@ -1,0 +1,34 @@
+---
+title: "Generator memory"
+slug: python-generator-memory
+kind: interview
+track: python
+difficulty: intermediate
+tags:
+  - generators
+  - memory
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Lazy iteration yields one item at a time; contrast with materializing huge lists."
+related:
+  - gil
+followUps:
+  - "Generator close?"
+  - "itertools patterns?"
+---
+Why use a generator to read a large file?
+
+## Model answer
+
+Generator yields lines one at a time—O(1) memory vs loading entire file list. for line in f already iterates; explicit generator functions compose pipelines (parse, filter) without intermediate lists. Close generators to run finally blocks. itertools.chain/ islice build lazy streams. Tradeoff: cannot random-access length without consuming. For parallel CPU on lines, batch yielded chunks to workers.
+
+
+## Follow-ups
+
+### Generator close?
+
+gen.close() throws GeneratorExit into finally for resource cleanup.
+
+### itertools patterns?
+
+chain merges iterables lazily; islice caps without building full list.

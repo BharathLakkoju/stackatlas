@@ -1,0 +1,34 @@
+---
+title: "FastAPI Depends"
+slug: python-fastapi-depends
+kind: interview
+track: python
+difficulty: intermediate
+tags:
+  - fastapi
+  - di
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Dependency injection tree, scoped resources with yield, and cached settings providers."
+related:
+  - fastapi-di
+followUps:
+  - "Security scopes?"
+  - "Testing overrides?"
+---
+How does FastAPI Depends work for DB sessions?
+
+## Model answer
+
+Depends registers callable resolved before route runs. yield fixtures open session, yield to handler, close in finally—request-scoped lifecycle. Depends can nest: route depends on service depends on db. use_cache=True singletons settings. Override dependencies in tests via app.dependency_overrides. Security dependencies combine OAuth scopes with Depends. Keep callables sync unless truly async driver—async def route with sync session OK if non-blocking.
+
+
+## Follow-ups
+
+### Security scopes?
+
+SecurityScopes in Depends enforces scope checks uniformly.
+
+### Testing overrides?
+
+dependency_overrides replace providers in tests without patching globals.

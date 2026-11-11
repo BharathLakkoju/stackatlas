@@ -1,0 +1,34 @@
+---
+title: "Cost anomaly detection"
+slug: cloud-cost-anomaly
+kind: interview
+track: cloud
+difficulty: intermediate
+tags:
+  - finops
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Tags, budgets, CUR analysis, and alerts on unusual spend spikes."
+related:
+  - iam
+  - s3
+followUps:
+  - "Reserved vs Savings Plans?"
+  - "S3 lifecycle savings?"
+---
+How do you detect unexpected AWS bill increases?
+
+## Model answer
+
+Enable cost allocation tags (team, service, env) and AWS Budgets alerts on forecast threshold. Cost Anomaly Detection ML on service spend with SNS notify. Review Cost and Usage Report in Athena for daily granularity—spot NAT duplication, orphaned EBS, over-provisioned RDS. CloudWatch metrics on NAT Gateway Bytes. Automate idle resource reports (unattached EIPs, old snapshots). Rightsize with Compute Optimizer. Set SCP deny on expensive instance types in sandbox accounts.
+
+
+## Follow-ups
+
+### Reserved vs Savings Plans?
+
+Savings Plans flexible compute commit vs RI instance lock-in.
+
+### S3 lifecycle savings?
+
+Lifecycle to IA/Glacier and abort incomplete multipart uploads.

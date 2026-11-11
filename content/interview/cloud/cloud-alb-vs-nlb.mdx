@@ -1,0 +1,34 @@
+---
+title: "ALB vs NLB"
+slug: cloud-alb-vs-nlb
+kind: interview
+track: cloud
+difficulty: intermediate
+tags:
+  - networking
+  - load-balancing
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Layer 7 HTTP routing versus Layer 4 TCP/UDP throughput and static IPs."
+related:
+  - load-balancing
+followUps:
+  - "TLS termination?"
+  - "Target types?"
+---
+When use ALB vs NLB?
+
+## Model answer
+
+ALB: HTTP/HTTPS, host/path routing, WAF integration, WebSockets, Lambda targets—product APIs. NLB: ultra-low latency TCP/UDP, millions RPS, static IP per AZ, preserves source IP—gaming, VoIP, TLS pass-through. ALB does TLS termination with ACM certs; NLB can terminate or pass to targets. Internal ALB for east-west HTTP inside VPC. Health checks differ: HTTP for ALB, TCP/HTTP for NLB. Price models differ—NLB per LCU plus NLCU.
+
+
+## Follow-ups
+
+### TLS termination?
+
+ACM on ALB; NLB TLS with cert manager or pass-through to pod.
+
+### Target types?
+
+ALB supports IP/instance/Lambda; NLB instance/IP targets.

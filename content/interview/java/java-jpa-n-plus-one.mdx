@@ -1,0 +1,34 @@
+---
+title: "JPA N+1 queries"
+slug: java-jpa-n-plus-one
+kind: interview
+track: java
+difficulty: intermediate
+tags:
+  - jpa
+  - performance
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Lazy loading triggers one query per association; fix with join fetch or entity graph."
+related:
+  - spring-data-jpa
+followUps:
+  - "open-in-view?"
+  - "Batch fetching?"
+---
+What is N+1 in JPA and how do you fix it?
+
+## Model answer
+
+Load N parent entities, then accessing lazy association triggers N additional selects—1+N total. Fixes: JOIN FETCH in JPQL, @EntityGraph on repository method, @BatchSize on collection, or DTO projection query returning flat data. open-in-view=true hides problem in MVC by lazy loading during view render—disable in APIs forcing explicit fetch plan. Hibernate statistics show query count in tests. Avoid EAGER everywhere—overfetching different pain.
+
+
+## Follow-ups
+
+### open-in-view?
+
+open-in-view=false exposes N+1 in service layer early—better for APIs.
+
+### Batch fetching?
+
+@BatchSize groups lazy loads into batched IN queries.

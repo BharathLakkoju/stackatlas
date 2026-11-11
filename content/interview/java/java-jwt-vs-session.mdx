@@ -1,0 +1,33 @@
+---
+title: "JWT vs session"
+slug: java-jwt-vs-session
+kind: interview
+track: java
+difficulty: intermediate
+tags:
+  - security
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Stateless signed JWT vs server session store; revocation and XSS tradeoffs."
+related:
+  - spring-security-jwt
+followUps:
+  - "Refresh rotation?"
+  - "JWKS rotation?"
+---
+Compare session cookies and JWT for authentication.
+
+## Model answer
+
+Session: server stores session id cookie; easy revoke by deleting server state; needs sticky sessions or shared store at scale. JWT: signed claims client holds; verify with secret/public key without DB hit—good horizontal scale. Revocation hard—short TTL + refresh token rotation, denylist for compromise. XSS steals bearer in localStorage—prefer HttpOnly refresh cookie + memory access token. JWT size adds headers; do not stuff large claims. Rotate signing keys via JWKS.
+
+
+## Follow-ups
+
+### Refresh rotation?
+
+Refresh token rotation detects reuse and revokes family.
+
+### JWKS rotation?
+
+Publish JWKS endpoint; verify kid header picks key.
