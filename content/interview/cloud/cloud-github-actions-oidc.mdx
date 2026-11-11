@@ -1,0 +1,35 @@
+---
+title: "GitHub Actions OIDC to AWS"
+slug: cloud-github-actions-oidc
+kind: interview
+track: cloud
+difficulty: intermediate
+tags:
+  - cicd
+  - security
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Federated role assumption without static AWS keys in repository secrets."
+related:
+  - cicd
+  - iam
+followUps:
+  - "Trust policy conditions?"
+  - "Environment protection?"
+---
+How do you deploy to AWS from GitHub Actions without long-lived keys?
+
+## Model answer
+
+Configure IAM OIDC identity provider for token.actions.githubusercontent.com. IAM role trust policy allows sts:AssumeRoleWithWebIdentity with condition on sub repo:org/repo:ref:refs/heads/main and aud sts.amazonaws.com. Workflow permissions id-token: write, uses aws-actions/configure-aws-credentials with role-to-assume. Short-lived creds per job—no keys in secrets. Scope roles per environment (staging/prod) with branch/environment conditions. Audit CloudTrail AssumeRole events.
+
+
+## Follow-ups
+
+### Trust policy conditions?
+
+Condition StringEquals token.actions.githubusercontent.com:sub to exact repo/branch.
+
+### Environment protection?
+
+GitHub environments require reviewers before prod role assumption.

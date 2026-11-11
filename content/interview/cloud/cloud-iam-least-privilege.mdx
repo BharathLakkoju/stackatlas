@@ -1,0 +1,34 @@
+---
+title: "IAM least privilege"
+slug: cloud-iam-least-privilege
+kind: interview
+track: cloud
+difficulty: intermediate
+tags:
+  - iam
+  - security
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Action-resource-condition policies, roles over users, and permission boundaries for blast radius."
+related:
+  - iam
+followUps:
+  - "Service control policies?"
+  - "Cross-account roles?"
+---
+How do you design IAM for a microservice on AWS?
+
+## Model answer
+
+Grant one IAM role per service task with minimal actions on specific resource ARNs—S3 prefix, single Dynamo table, SQS queue. Avoid wildcards in production. Use condition keys: aws:SourceVpc, kms:ViaService. Humans assume roles with MFA; no long-lived keys on EC2—instance/task roles via STS. Permission boundaries cap max grants for delegated admin. SCPs at org level deny dangerous actions (disable region). Audit with IAM Access Analyzer and CloudTrail. Break glass roles separate and monitored.
+
+
+## Follow-ups
+
+### Service control policies?
+
+SCPs filter maximum permissions for entire accounts/OUs.
+
+### Cross-account roles?
+
+AssumeRole into target account with externalId for third parties.

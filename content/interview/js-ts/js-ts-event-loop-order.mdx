@@ -1,0 +1,42 @@
+---
+title: "Event loop ordering"
+slug: js-ts-event-loop-order
+kind: interview
+track: js-ts
+difficulty: intermediate
+tags:
+  - event-loop
+  - async
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Predict console order from sync code, promises, queueMicrotask, and setTimeout on a single thread."
+related:
+  - event-loop
+followUps:
+  - "What changes with setImmediate in Node?"
+  - "How does await schedule work?"
+---
+What is the logged order?
+
+```js
+console.log('A');
+setTimeout(() => console.log('B'), 0);
+Promise.resolve().then(() => console.log('C'));
+queueMicrotask(() => console.log('D'));
+console.log('E');
+```
+
+## Model answer
+
+Sync first: A, E. Microtasks drain next (C, D) in FIFO order. Then the timer macrotask logs B. Final: A, E, C, D, B. One macrotask per loop turn; all microtasks run before the next timer. In Node, process.nextTick runs before other microtasks—mention if used. await schedules continuation as microtask after the awaited promise settles. Infinite microtasks can starve timers—relevant for UI jank.
+
+
+## Follow-ups
+
+### What changes with setImmediate in Node?
+
+setImmediate runs in the check phase after I/O callbacks; vs setTimeout(0) ordering depends on whether you are inside an I/O callback.
+
+### How does await schedule work?
+
+await unwraps promises; code after await is microtask-scheduled like .then.

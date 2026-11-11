@@ -1,0 +1,34 @@
+---
+title: "Node cluster vs worker threads"
+slug: js-ts-node-cluster-vs-workers
+kind: interview
+track: js-ts
+difficulty: intermediate
+tags:
+  - node
+  - concurrency
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Process cluster for multi-core HTTP; worker threads for CPU-bound JS with optional shared memory."
+related:
+  - node-streams
+followUps:
+  - "When is child_process enough?"
+  - "SharedArrayBuffer caveats?"
+---
+When use cluster vs worker_threads?
+
+## Model answer
+
+Cluster forks processes sharing a port—good for I/O HTTP across cores, separate heaps, higher RAM. worker_threads share one process—offload CPU JS without blocking event loop; SharedArrayBuffer and transferList for buffers. child_process for separate programs. Containers often replace manual cluster but same model.
+
+
+## Follow-ups
+
+### When is child_process enough?
+
+Fork for isolation running CLIs or untrusted code.
+
+### SharedArrayBuffer caveats?
+
+Shared memory needs careful locking; browsers need COOP/COEP.
