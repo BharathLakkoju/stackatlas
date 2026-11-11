@@ -80,7 +80,7 @@ function EmptyDescription({ className, ...props }: React.ComponentProps<"p">) {
   )
 }
 
-function EmptyContent({ className, ...props }: React.ComponentProps<"div">) {
+function EmptyContent({ className, ...props }: React.ComponentProps<"motion">) {
   return (
     <div
       data-slot="empty-content"
