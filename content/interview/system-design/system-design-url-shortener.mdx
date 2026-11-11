@@ -1,0 +1,38 @@
+---
+title: "Design a URL shortener"
+slug: system-design-url-shortener
+kind: interview
+track: system-design
+difficulty: intermediate
+tags:
+  - case-study
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Encode short codes, redirect path, cache-heavy reads, collision-safe writes."
+related:
+  - url-shortener
+  - caching
+followUps:
+  - "Custom aliases?"
+  - "Expiration?"
+---
+Design bit.ly-style URL shortening and redirect.
+
+## Model answer
+
+POST /links with long URL returns short code; GET /{code} 301/302 redirect. Reads dominate—Redis/CDN cache code→long URL.
+
+IDs: base62 counter service or hash with DB uniqueness retry. Store short_code PK, long_url, owner, created_at.
+
+Rate-limit creates; scan URLs for abuse. Analytics async via queue to avoid slowing redirect.
+
+
+## Follow-ups
+
+### Custom aliases?
+
+Custom codes: unique constraint + reserved word block.
+
+### Expiration?
+
+TTL column + lazy delete; cache TTL aligned.

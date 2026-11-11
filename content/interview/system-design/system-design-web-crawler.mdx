@@ -1,0 +1,37 @@
+---
+title: "Design a web crawler"
+slug: system-design-web-crawler
+kind: interview
+track: system-design
+difficulty: intermediate
+tags:
+  - crawler
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Frontier queue, politeness, dedup, blob store, optional JS render."
+related:
+  - scalability-fundamentals
+followUps:
+  - "JS rendering?"
+  - "Near-duplicates?"
+---
+Large-scale crawler for search index.
+
+## Model answer
+
+Frontier per host rate limits; fetchers pull tasks; parser extracts links; bloom dedup URLs.
+
+Respect robots.txt; store HTML in object store; metadata DB tracks status.
+
+Optional headless queue for JS sites only.
+
+
+## Follow-ups
+
+### JS rendering?
+
+Headless farm expensive; fast path static HTML.
+
+### Near-duplicates?
+
+Simhash for near-duplicate detection.
