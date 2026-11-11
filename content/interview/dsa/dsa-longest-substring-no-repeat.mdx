@@ -1,0 +1,40 @@
+---
+title: "Longest substring without repeating characters"
+slug: dsa-longest-substring-no-repeat
+kind: interview
+track: dsa
+difficulty: intermediate
+tags:
+  - sliding-window
+  - strings
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Sliding window with last-seen indices to maximize substring length in one pass."
+related:
+  - sliding-window
+  - hashing
+followUps:
+  - "At most k distinct?"
+  - "Return the substring itself?"
+---
+Find the length of the longest substring of s without repeating characters.
+
+## Model answer
+
+Keep window [lo, hi] and map char -> last index. For each hi, if s[hi] was seen with index >= lo, set lo = last[s[hi]] + 1. Update last[s[hi]] = hi and best = max(best, hi - lo + 1).
+
+Invariant: substring s[lo..hi] has all unique chars. Each index moves forward at most once → O(n).
+
+Distinct from 'at most k distinct', which tracks frequencies and shrinks while distinct > k.
+
+**Complexity:** Time O(n), space O(min(n, alphabet)).
+
+## Follow-ups
+
+### At most k distinct?
+
+Use frequency map; expand hi, shrink lo while distinct > k.
+
+### Return the substring itself?
+
+Track bestLo/bestHi when updating best; return slice at end.

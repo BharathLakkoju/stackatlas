@@ -1,0 +1,38 @@
+---
+title: "Merge two sorted linked lists"
+slug: dsa-merge-two-sorted-lists
+kind: interview
+track: dsa
+difficulty: intermediate
+tags:
+  - linked-list
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Iterative merge with dummy head in O(n+m) time and O(1) extra space."
+related:
+  - two-pointers
+followUps:
+  - "Recursive merge?"
+  - "Merge k lists?"
+---
+Merge two ascending linked lists and return the merged list head.
+
+## Model answer
+
+Use dummy node and tail pointer. While both heads exist, attach smaller node to tail.next, advance that list and tail. Attach remaining non-null list.
+
+Relink existing nodes—no new nodes unless required. O(n+m) time, O(1) auxiliary space iterative.
+
+Recursive merge is O(n+m) stack depth—prefer iterative in interviews unless asked.
+
+**Complexity:** Time O(n+m), space O(1).
+
+## Follow-ups
+
+### Recursive merge?
+
+Recursive: O(n+m) call stack; iterative preferred for deep lists.
+
+### Merge k lists?
+
+Min-heap of k heads: pop smallest, push next; O(N log k) total nodes N.

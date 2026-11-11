@@ -1,0 +1,34 @@
+---
+title: "RAG eval metrics"
+slug: ai-eval-metrics
+kind: interview
+track: ai
+difficulty: intermediate
+tags:
+  - evals
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Retrieval recall, answer faithfulness, and task rubrics for production monitoring."
+related:
+  - evals-guardrails
+  - rag
+followUps:
+  - "LLM-as-judge?"
+  - "Offline vs online?"
+---
+What metrics evaluate a RAG system?
+
+## Model answer
+
+Retrieval: recall@k, MRR on labeled question-chunk pairs. Generation: faithfulness/groundedness (answer supported by context), citation accuracy, hallucination rate. End-to-end task success with human or rubric LLM judge. Track latency and cost per query. Regression suite on every index or prompt change. Online: thumbs, implicit signals, escalation rate. Balance automatic metrics with periodic human audit—LLM judges biased toward fluent wrong answers.
+
+
+## Follow-ups
+
+### LLM-as-judge?
+
+LLM judge cheap at scale but calibrate against human gold.
+
+### Offline vs online?
+
+Offline CI blocks deploy; online dashboards catch drift.

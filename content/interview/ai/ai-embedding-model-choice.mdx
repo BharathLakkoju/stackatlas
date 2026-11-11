@@ -1,0 +1,33 @@
+---
+title: "Embedding model choice"
+slug: ai-embedding-model-choice
+kind: interview
+track: ai
+difficulty: intermediate
+tags:
+  - embeddings
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Match index and query model, dimension cost, and domain-specific encoders for code or legal text."
+related:
+  - embeddings
+followUps:
+  - "Multilingual?"
+  - "Reindex migration?"
+---
+What factors pick an embedding model?
+
+## Model answer
+
+Use same model at index and query time—mixing invalidates geometry. Evaluate MTEB or in-domain retrieval benchmarks not leaderboard alone. Higher dimension improves quality but multiplies storage and distance compute—pq compression trades accuracy. Code/legal/science may need specialized encoders. Normalize vectors if cosine. Consider hosted vs self-hosted latency and privacy. Plan reindex migration when switching models—dual-write period or blue/green index.
+
+
+## Follow-ups
+
+### Multilingual?
+
+Multilingual models if queries cross languages; else English-only smaller.
+
+### Reindex migration?
+
+Version index metadata embeddingModel field; rebuild on change.

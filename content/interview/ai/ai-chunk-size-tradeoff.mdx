@@ -1,0 +1,35 @@
+---
+title: "Chunk size tradeoffs"
+slug: ai-chunk-size-tradeoff
+kind: interview
+track: ai
+difficulty: intermediate
+tags:
+  - rag
+  - chunking
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Small chunks improve precision; large chunks improve context coherence—tune with eval recall."
+related:
+  - rag
+  - embeddings
+followUps:
+  - "Overlap?"
+  - "Structure-aware chunking?"
+---
+How do you pick chunk size for vector search?
+
+## Model answer
+
+Small chunks (256–512 tokens) raise precision for factoid questions but lose surrounding context. Large chunks (1–2k) help summarization and procedural docs but dilute embedding signal and pack irrelevant text into prompt. Use overlap (10–20%) to avoid cutting sentences. Measure retrieval recall@k on golden set—see [rag-chunking lab](/labs/rag-chunking). Structure-aware splits on headings/code fences beat naive char splits. Rerankers recover from suboptimal chunking at latency cost.
+
+
+## Follow-ups
+
+### Overlap?
+
+Overlap preserves continuity across chunk boundaries.
+
+### Structure-aware chunking?
+
+Markdown header hierarchy chunks keep sections coherent.

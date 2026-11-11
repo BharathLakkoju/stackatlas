@@ -1,0 +1,33 @@
+---
+title: "Decorator order"
+slug: python-decorator-order
+kind: interview
+track: python
+difficulty: intermediate
+tags:
+  - decorators
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Stacked decorators apply bottom-up; auth then logging order matters for observability."
+related:
+  - decorators
+followUps:
+  - "Parametrized decorators?"
+  - "classmethod interaction?"
+---
+In `@a @b def f`, which runs first?
+
+## Model answer
+
+Equivalent to f = a(b(f))—b wraps f first, then a wraps the result. Order matters: @auth above @log means outer auth sees logged inner call. Use functools.wraps to preserve __name__ and __doc__. Parametrized decorators are three levels: decorator factory returns decorator returns wrapper. classmethod/staticmethod are descriptor decorators changing binding.
+
+
+## Follow-ups
+
+### Parametrized decorators?
+
+Factory: def deco(arg): def inner(fn): ... return inner return inner.
+
+### classmethod interaction?
+
+classmethod binds cls; placed correctly above user decorators depending on desired binding.

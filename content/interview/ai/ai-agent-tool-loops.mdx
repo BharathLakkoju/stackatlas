@@ -1,0 +1,35 @@
+---
+title: "Agent tool loops"
+slug: ai-agent-tool-loops
+kind: interview
+track: ai
+difficulty: intermediate
+tags:
+  - agents
+  - tools
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Cap iterations, validate arguments, log traces, and stop when task done or budget exhausted."
+related:
+  - tool-using-agents
+  - langgraph-vs-langchain
+followUps:
+  - "Parallel tools?"
+  - "Human approval?"
+---
+How do you prevent runaway agent tool loops?
+
+## Model answer
+
+Set max_steps and token budget. After each model turn, parse tool calls, validate JSON schema, execute with timeouts, append observations. Stop on finish tool or no tool requested. Reject recursive call patterns in policy. Log full trace for replay. Parallelize independent tools when safe. Human-in-the-loop gate for destructive actions (delete, pay). Use graph state machines (LangGraph) for explicit transitions vs free-form ReAct only.
+
+
+## Follow-ups
+
+### Parallel tools?
+
+Batch read-only tools concurrently; serialize writes.
+
+### Human approval?
+
+Approval node blocks until human confirms high-risk tool.

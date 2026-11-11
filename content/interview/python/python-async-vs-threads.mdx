@@ -1,0 +1,34 @@
+---
+title: "async vs threads"
+slug: python-async-vs-threads
+kind: interview
+track: python
+difficulty: intermediate
+tags:
+  - async
+  - threads
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "asyncio cooperative multitasking for I/O; threads for blocking libraries without async drivers."
+related:
+  - async-await
+followUps:
+  - "asyncio.to_thread?"
+  - "GIL with async?"
+---
+When choose asyncio vs threads in Python?
+
+## Model answer
+
+asyncio excels at many concurrent I/O waits—single thread, explicit await points, low overhead. Use when libraries support async drivers (aiohttp, asyncpg). Threads help blocking SDKs you cannot replace—pool with bounded size. CPU work: neither—use processes. asyncio.to_thread offloads blocking call without blocking loop. Mixing requires discipline: never block the event loop. GIL still applies but async avoids thread context switches for I/O coordination.
+
+
+## Follow-ups
+
+### asyncio.to_thread?
+
+to_thread runs callable in default executor—keeps loop responsive.
+
+### GIL with async?
+
+Async does not remove GIL; it avoids thread overhead for I/O wait coordination.
