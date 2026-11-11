@@ -1,0 +1,38 @@
+---
+title: "Course schedule (cycle detection)"
+slug: dsa-course-schedule
+kind: interview
+track: dsa
+difficulty: intermediate
+tags:
+  - graphs
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Topological sort or DFS three-color to detect cycles in prerequisite graph."
+related:
+  - bfs-dfs
+followUps:
+  - "Return valid order?"
+  - "Parallel prerequisites?"
+---
+With numCourses and prerequisites [a,b] meaning b before a, can you finish all courses?
+
+## Model answer
+
+Build directed edges b→a. Cycle ⇒ impossible.
+
+DFS three-color: visiting node on active path ⇒ cycle. Or Kahn BFS: enqueue in-degree 0, decrement neighbors; process all nodes if acyclic.
+
+Both O(V+E). Kahn outputs topological order when acyclic.
+
+**Complexity:** Time O(V+E), space O(V+E).
+
+## Follow-ups
+
+### Return valid order?
+
+Kahn list or reverse DFS post-order gives valid ordering.
+
+### Parallel prerequisites?
+
+Multiple edges increase in-degree only; logic unchanged.
