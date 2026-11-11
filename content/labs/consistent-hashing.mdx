@@ -1,0 +1,43 @@
+---
+title: "Consistent hashing lab"
+slug: consistent-hashing
+kind: lab
+labId: consistent-hashing
+track: system-design
+tags:
+  - distributed
+  - caching
+estimatedMinutes: 10
+lastReviewed: "2026-11-01"
+summary: "Add and remove cache nodes and watch only a fraction of keys remap—virtual nodes smooth load."
+related:
+  - caching
+  - load-balancing
+  - rate-limiting
+---
+
+Consistent hashing is how real caches and CDNs limit **remap churn** when you scale out or replace a node. This lab places keys on a ring and shows which server owns a key before and after topology changes.
+
+## What to notice
+
+- **Adding a node** should move only keys near that segment—not the whole keyspace.
+- **Removing a node** reassigns its arc to the next clockwise server—plan for temporary overload on that neighbor.
+- **Virtual nodes** spread hot physical machines across multiple points on the ring, reducing skew.
+
+## Tie-in to lessons
+
+Pair with [caching patterns](/learn/system-design/caching) (cache-aside, hot keys) and [load balancing](/learn/system-design/load-balancing). Rate limits keyed by user hash use the same idea at the gateway.
+
+## Widget note
+
+The ring visualization and controls ship in the application shell—nothing to import in MDX. Launch [/labs/consistent-hashing](/labs/consistent-hashing) from [/labs](/labs).
+
+## Interview prompts
+
+After the lab, explain:
+
+1. Why modulo hashing `hash(key) % N` is painful when N changes.
+2. How you would detect and mitigate a **hot key** even with consistent hashing.
+3. What happens during a network **partition** between two cache halves (PACELC: latency vs consistency).
+
+Optional: estimate blast radius with [/tools/capacity](/tools/capacity) for a shard count change.

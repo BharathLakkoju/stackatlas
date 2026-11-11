@@ -1,0 +1,41 @@
+---
+title: "Microtasks vs macrotasks"
+slug: microtasks-vs-macrotasks
+kind: daily
+track: js-ts
+publishedAt: "2026-11-07"
+tags:
+  - event-loop
+  - async
+estimatedMinutes: 5
+lastReviewed: "2026-11-01"
+summary: "Promise reactions run before the next timer because they are microtasks—here is why that ordering matters in React and fetch chains."
+related:
+  - event-loop
+  - closures
+---
+
+JavaScript runtimes use a **single call stack** per thread. Async code schedules work on queues:
+
+- **Macrotasks** (tasks): `setTimeout`, `setInterval`, I/O callbacks in Node, UI events in browsers (simplified).
+- **Microtasks**: Promise `.then/catch/finally`, `queueMicrotask`, `MutationObserver` (browser).
+
+After synchronous code finishes, the engine **drains the entire microtask queue** before taking the **next** macrotask. That is why:
+
+```js
+Promise.resolve().then(() => console.log("promise"));
+setTimeout(() => console.log("timer"), 0);
+// promise, then timer
+```
+
+**Why care?**
+
+1. **UI**: scheduling 10k microtasks blocks painting until the queue clears—starves timers and input.
+2. **React 18**: state updates from promises resolve in microtasks; batching interacts with this timing.
+3. **Tests**: fake timers (`vi.useFakeTimers`) must advance both macro and micro tasks to flush promises.
+
+Node adds `process.nextTick` **before** other microtasks—library authors used it for years; still tripping if you mix with Promises.
+
+Rule of thumb: **defer user-visible side effects** to macrotasks if you must yield for paint (`requestAnimationFrame` for visuals, `setTimeout(0)` only when you understand the tradeoff).
+
+Full lesson: [event loop](/learn/js-ts/event-loop). Cheatsheet: [/cheatsheets/js-ts](/cheatsheets/js-ts).

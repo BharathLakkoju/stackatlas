@@ -1,0 +1,40 @@
+---
+title: "Monotonic stack in one picture"
+slug: monotonic-stack-in-one-picture
+kind: daily
+track: dsa
+publishedAt: "2026-11-05"
+tags:
+  - stack
+  - arrays
+estimatedMinutes: 5
+lastReviewed: "2026-11-01"
+summary: "A monotone stack tracks the next greater or smaller element in linear time—here is the invariant in plain language."
+related:
+  - sliding-window
+  - dp-1d
+---
+
+Imagine scanning an array left to right while maintaining a stack of **indices** whose values strictly increase (for “next greater”) or decrease (for “next smaller”). The stack is **monotonic**: popping happens whenever the current value breaks the order.
+
+**Invariant:** Every index still in the stack has not yet found its answer. When `nums[i]` is larger than `nums[stack.top()]`, `i` is the first element to the right that beats that top—pop and record the answer, repeat until the top survives or the stack empties.
+
+That is why each index pushes once and pops at most once → **O(n)** time, **O(n)** stack space in the worst case.
+
+Classic prompts: *daily temperatures*, *next greater element*, *largest rectangle in histogram* (store indices, pop when height forces width calculation).
+
+```py
+def next_greater(nums):
+    ans = [-1] * len(nums)
+    stack = []
+    for i, x in enumerate(nums):
+        while stack and nums[stack[-1]] < x:
+            j = stack.pop()
+            ans[j] = x
+        stack.append(i)
+    return ans
+```
+
+**When not to use it:** If the problem is about **contiguous subarray sums** or **frequency counts**, a deque sliding window is usually the right tool—not every “linear scan with a stack” is monotonic.
+
+Pair with [sliding window](/learn/dsa/sliding-window) for substring problems and [DP 1D](/learn/dsa/dp-1d) when optimality needs overlapping subproblems instead of immediate neighbors.

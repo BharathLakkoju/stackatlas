@@ -1,0 +1,42 @@
+---
+title: "The @Transactional proxy trap"
+slug: transactional-proxy-trap
+kind: daily
+track: java
+publishedAt: "2026-11-09"
+tags:
+  - spring
+  - transactions
+estimatedMinutes: 5
+lastReviewed: "2026-11-01"
+summary: "Spring wraps your bean in a proxy—calls from this.save() inside the same class skip the interceptor."
+related:
+  - spring-data-jpa
+  - spring-ioc
+---
+
+`@Transactional` looks like a method annotation, but Spring implements it with an **AOP proxy** around your `@Service` bean. External callers hit the proxy; **`this.otherMethod()` inside the class calls the raw object**—no transaction advice runs.
+
+```java
+@Service
+class OrderService {
+  public void place(Order o) {
+    save(o); // self-call: NOT transactional
+  }
+
+  @Transactional
+  public void save(Order o) { repo.save(o); }
+}
+```
+
+**Fixes that survive code review:**
+
+1. Move transactional logic to another bean (`OrderWriter.save`).
+2. Inject self interface (`OrderService self`) and call `self.save(o)`.
+3. Rare: AspectJ compile-time weaving for true in-object aspects.
+
+Also fails: `private`/`final` methods (proxy cannot intercept), transactions on beans not managed by Spring, and catching exceptions without `rollbackFor` leaving a committed partial state.
+
+**Read-only hint:** `@Transactional(readOnly = true)` on query services reduces Hibernate flush work.
+
+Pair with [Spring Data JPA](/learn/java/spring-data-jpa) for where transactions meet lazy loading, and [Spring IoC](/learn/java/spring-ioc) for proxy basics.

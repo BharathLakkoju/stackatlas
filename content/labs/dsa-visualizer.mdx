@@ -1,0 +1,44 @@
+---
+title: "DSA visualizer lab"
+slug: dsa-visualizer
+kind: lab
+labId: dsa-visualizer
+track: dsa
+tags:
+  - visualization
+  - practice
+estimatedMinutes: 10
+lastReviewed: "2026-11-01"
+summary: "Step through pointer, window, and graph algorithms with synchronized state and complexity counters."
+related:
+  - bfs-dfs
+  - dp-1d
+  - sliding-window
+---
+
+This lab is for **seeing invariants move**—not replacing pen-and-paper or timed mocks. Pick a pattern (two pointers, sliding window, BFS layer expansion, 1D DP fill). The widget advances one logical step at a time; the narrative below explains what changed and why.
+
+## What to notice
+
+- **Two pointers**: when `lo`/`hi` move, ask whether the rule still covers all valid solutions—no skipped pairs.
+- **Sliding window**: watch the left bound jump when a constraint breaks; correlate with map/frequency updates.
+- **BFS**: queue size spikes at the widest level—ties to O(n) space arguments.
+- **DP 1D**: each cell depends only on prior indices you already justified in the lesson.
+
+## How to use it with lessons
+
+Read [BFS/DFS](/learn/dsa/bfs-dfs) or [sliding window](/learn/dsa/sliding-window), then run the lab scenario **without** peeking at pseudocode. Predict the next step before clicking advance.
+
+Afterwards, hit an [interview question](/interview/dsa) on the same pattern the same day.
+
+## Widget note
+
+The interactive canvas is **injected by the app**—this MDX file only documents goals and pitfalls. Open [/labs/dsa-visualizer](/labs/dsa-visualizer) in the hub UI to run it.
+
+## Pitfalls students still make
+
+- Advancing `hi` without updating auxiliary state (counts, last index).
+- Treating BFS queue as stack—order changes traversal meaning.
+- Filling DP cells before defining base cases and iteration direction.
+
+Use [/tools/big-o](/tools/big-o) to sanity-check reported step counts against your verbal complexity claim.
