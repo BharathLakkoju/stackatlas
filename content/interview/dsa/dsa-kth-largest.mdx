@@ -1,0 +1,38 @@
+---
+title: "Kth largest element"
+slug: dsa-kth-largest
+kind: interview
+track: dsa
+difficulty: intermediate
+tags:
+  - heap
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "Size-k min-heap or quickselect for kth largest in unsorted array."
+related:
+  - dp-1d
+followUps:
+  - "k near n?"
+  - "Duplicates?"
+---
+Find the kth largest element in an unsorted array.
+
+## Model answer
+
+Min-heap size k: for each num, push; if size>k pop smallest. Final peek is kth largest. O(n log k) time, O(k) space—good for small k or streams.
+
+Quickselect partitions like quicksort around pivot targeting index (n-k). Average O(n), worst O(n²) without random pivot.
+
+Full sort O(n log n) is baseline. Clarify kth largest with duplicates counts multiset.
+
+**Complexity:** Heap O(n log k); quickselect O(n) average.
+
+## Follow-ups
+
+### k near n?
+
+Large k reduces heap advantage; quickselect still reasonable.
+
+### Duplicates?
+
+Unless problem says distinct, duplicates count separately.
