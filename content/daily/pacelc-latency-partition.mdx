@@ -1,0 +1,40 @@
+---
+title: "PACELC: latency when the network is fine"
+slug: pacelc-latency-partition
+kind: daily
+track: system-design
+publishedAt: "2026-11-06"
+tags:
+  - consistency
+  - distributed
+estimatedMinutes: 5
+lastReviewed: "2026-11-01"
+summary: "After CAP comes PACELC: even without partitions, you still trade latency against consistency on every replicated read."
+related:
+  - cap-pacelc
+  - scalability-fundamentals
+---
+
+CAP is about **partitions (P)**: while the network is split, you cannot have both perfect **C** and perfect **A** for every operation. Interviews often stop there. Production systems spend most of their life **without** a partition—yet replicas still lag.
+
+**PACELC** says: *else* (when the network is normal), choose between **latency (L)** and **consistency (C)**.
+
+Example: a multi-region user profile read. **Strong consistency** may route to the leader or use quorum—higher latency, especially cross-region. **Eventual consistency** with a local replica answers in one RTT but may serve a write that has not arrived yet.
+
+Neither choice is “wrong.” The product picks an SLA:
+
+| Choice | User sees | Cost |
+|--------|-----------|------|
+| Read local replica | Stale name for seconds | Low latency |
+| Read leader / quorum | Latest write | Higher latency, lower read QPS on leader |
+
+Dynamo-style systems default to **L**; Spanner/Cockroach charge RTT for **C**. Redis primary-replica: reads from replica = PACELC **L** path; `WAIT` on write = leaning **C**.
+
+When drawing boxes, label **which reads** are allowed to be stale and **how stale** (TTL, version vectors, “read-your-writes” via sticky routing).
+
+```text
+write -> leader -> replicate (async)
+read  -> local replica OR leader (product knob)
+```
+
+Dig deeper in [CAP & PACELC](/learn/system-design/cap-pacelc) and [scalability fundamentals](/learn/system-design/scalability-fundamentals). More drills on [/interview/system-design](/interview/system-design).

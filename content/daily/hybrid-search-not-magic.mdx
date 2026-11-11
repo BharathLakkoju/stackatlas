@@ -1,0 +1,38 @@
+---
+title: "Hybrid search is not magic"
+slug: hybrid-search-not-magic
+kind: daily
+track: ai
+publishedAt: "2026-11-11"
+tags:
+  - rag
+  - search
+estimatedMinutes: 5
+lastReviewed: "2026-11-01"
+summary: "Dense vectors and BM25 fix different failure modes—fusion helps SKUs and acronyms embeddings miss."
+related:
+  - rag
+  - embeddings
+---
+
+Pure vector RAG fails in predictable ways: product codes (`SKU-9F2`), rare person names, internal acronyms, and exact error strings (`ENOENT`). Embeddings optimize semantic neighborhood, not token identity.
+
+**Hybrid search** runs at least two retrievers:
+
+1. **Dense** — embedding similarity.
+2. **Sparse** — BM25 / inverted index on tokens.
+
+Merge with **reciprocal rank fusion** (robust, no score normalization) or weighted sum after min-max scaling.
+
+```text
+query --> embed --> vector top-k
+      --> BM25  --> lexical top-k
+           \      /
+            merge --> rerank (optional) --> LLM
+```
+
+Tune on **your** query set: if engineering tickets search by JIRA key, lexical weight goes up. If onboarding FAQs are paraphrased questions, dense weight goes up.
+
+Hybrid does not remove need for **chunking quality** or **evals**—it widens recall so the right passage enters the prompt. Lab: [/labs/rag-chunking](/labs/rag-chunking).
+
+Lessons: [RAG](/learn/ai/rag) and [embeddings](/learn/ai/embeddings). Track hub: [/ai](/ai).

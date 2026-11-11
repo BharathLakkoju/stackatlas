@@ -1,0 +1,43 @@
+---
+title: "FastAPI Depends cache"
+slug: fastapi-depends-cache
+kind: daily
+track: python
+publishedAt: "2026-11-08"
+tags:
+  - fastapi
+  - di
+estimatedMinutes: 5
+lastReviewed: "2026-11-01"
+summary: "use_cache=True on Depends turns a settings loader into a per-process singleton—know when that is safe."
+related:
+  - fastapi-di
+  - pydantic-v2
+---
+
+`Depends()` resolves a callable **before** your route runs. Without cache, FastAPI would call `get_settings()` on every request—fine for cheap functions, wasteful for parsing env or building DB engines.
+
+```py
+from functools import lru_cache
+from fastapi import Depends, FastAPI
+
+@lru_cache
+def get_settings():
+    return Settings()  # reads env once
+
+@app.get("/health")
+def health(settings: Settings = Depends(get_settings)):
+    return {"env": settings.env}
+```
+
+FastAPI also supports `Depends(get_settings, use_cache=True)` when `get_settings` is a plain function reference—cached per application instance.
+
+**Safe to cache:** immutable settings, read-only config, SDK clients designed as singletons.
+
+**Do not cache:** request-scoped DB sessions, per-user auth context, anything that closes over request state. Use `yield` dependencies for open/close per request instead.
+
+**Tests:** `app.dependency_overrides[get_settings] = lambda: Settings(testing=True)` replaces the provider without fighting cache—override before client calls.
+
+**Gotcha:** `@lru_cache` on settings prevents seeing env changes in long-running workers without process restart—desired in prod, annoying in local hot reload.
+
+More: [FastAPI DI lesson](/learn/python/fastapi-di) and [Pydantic v2](/learn/python/pydantic-v2).
