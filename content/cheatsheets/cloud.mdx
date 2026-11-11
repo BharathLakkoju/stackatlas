@@ -1,0 +1,87 @@
+---
+title: "Cloud & DevOps cheatsheet"
+slug: cloud
+kind: cheatsheet
+track: cloud
+difficulty: intermediate
+tags:
+  - aws
+  - docker
+  - cicd
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "IAM, S3, Lambda, VPC, load balancers, queues, Docker layers, and CI/CD OIDC—one printable AWS-shaped reference."
+related:
+  - iam
+  - s3
+  - lambda-api-gateway
+---
+
+## IAM
+
+- **Least privilege**: action + resource ARN + condition keys.
+- Prefer **roles** over long-lived keys; **STS** for federation.
+- Boundaries + permission sets for org-wide guardrails.
+
+## S3
+
+| Topic | Fact |
+|-------|------|
+| Strong read-after-write | New objects; overwrites are read-after-write |
+| Consistency | List/HEAD eventually consistent historically—know current regional behavior |
+| Encryption | SSE-S3, SSE-KMS, client-side |
+| Lifecycle | Transition to IA/Glacier; expire prefixes |
+
+## Lambda + API Gateway
+
+- **Cold start**: init + ENI (VPC adds latency)—minimize deps, arm64, provisioned concurrency for tail latency.
+- **Timeout** < API GW max; idempotent handlers for retries.
+
+## Compute orchestration
+
+See [ECS vs EKS](/compare/ecs-vs-eks): managed control plane vs Kubernetes portability.
+
+## VPC
+
+```
+Internet → IGW → public subnet (NAT) → private subnet (app, DB)
+```
+
+- **Private subnet**: no direct internet; outbound via NAT.
+- **Security groups**: stateful; **NACLs**: stateless subnet fence.
+
+## Load balancers
+
+| ALB | NLB |
+|-----|-----|
+| HTTP routing, host/path rules | Ultra-high TCP/UDP, static IP |
+| WAF integration | Low latency |
+
+## SQS
+
+- **At-least-once** delivery; consumers must be **idempotent**.
+- Visibility timeout > processing time; DLQ for poison messages.
+
+## Docker
+
+```dockerfile
+FROM node:22-alpine AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+```
+
+Order **least-changing layers first**; use `.dockerignore`; multi-stage drops dev deps.
+
+## CI/CD
+
+GitHub Actions **OIDC** → AWS role (no static `AWS_ACCESS_KEY_ID` in repo).
+
+## Cost
+
+- Tag everything; anomaly detection on account alerts.
+- Rightsize, S3 lifecycle, idle NAT/LB review.
+
+Track: [/cloud](/cloud). Lessons: [IAM](/learn/cloud/iam), [S3](/learn/cloud/s3), [Lambda](/learn/cloud/lambda-api-gateway).

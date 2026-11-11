@@ -1,0 +1,87 @@
+---
+title: "DSA interview cheatsheet"
+slug: dsa
+kind: cheatsheet
+track: dsa
+difficulty: intermediate
+tags:
+  - patterns
+  - complexity
+  - interviews
+estimatedMinutes: 8
+lastReviewed: "2026-11-01"
+summary: "One-page reference for Big-O, core patterns, and the data structures interviewers expect you to name-drop with precision."
+related:
+  - big-o-complexity
+  - hashing
+  - sliding-window
+---
+
+## Complexity at a glance
+
+| Class | Examples | When it dominates |
+|-------|----------|-------------------|
+| O(1) | Hash lookup, stack push/pop | Map/set membership |
+| O(log n) | Binary search, heap push/pop | Sorted data, top-k |
+| O(n) | Single pass, two pointers | One scan with bookkeeping |
+| O(n log n) | Sort, heapify all | Preprocessing |
+| O(n²) | Nested loops on same n | Naive pairs; often optimizable |
+
+Drop constants; state **average vs worst** for hashes. Amortized matters for dynamic arrays.
+
+## Pattern → signal words
+
+| Pattern | Clues | Sketch |
+|---------|-------|--------|
+| Hash map | "count", "complement", "seen before" | Extra space for O(1) lookup |
+| Two pointers | Sorted array, pair sum, palindrome | Move `lo`/`hi` or slow/fast |
+| Sliding window | Contiguous subarray/substring, "longest/shortest" | Expand right; shrink left while invalid |
+| BFS/DFS | Graph, tree levels, components | Queue vs stack/recursion |
+| Binary search | Monotonic predicate on index | `while (lo <= hi)` |
+| Heap | k largest/smallest, streaming median | Size-k min/max heap |
+| DP 1D | Optimal substructure on sequence | `dp[i]` from `dp[i-1]`… |
+
+## Data structures
+
+| Structure | Ops (typical) | Gotcha |
+|-----------|----------------|--------|
+| `Array` | index O(1) | insert middle O(n) |
+| `HashMap` / `Set` | avg O(1) | worst O(n); need stable hash for keys |
+| `Deque` | ends O(1) | monotonic stack for next greater |
+| `Heap` | push/pop O(log n) | not sorted; peek min/max only |
+| `Union-Find` | near O(α(n)) | component count, Kruskal |
+
+## Tiny templates
+
+Two-sum complement:
+
+```py
+def two_sum(nums, target):
+    seen = {}
+    for i, x in enumerate(nums):
+        need = target - x
+        if need in seen:
+            return [seen[need], i]
+        seen[x] = i
+```
+
+Sliding window (distinct chars):
+
+```py
+def length_of_longest(s):
+    last, lo, best = {}, 0, 0
+    for hi, ch in enumerate(s):
+        if ch in last and last[ch] >= lo:
+            lo = last[ch] + 1
+        last[ch] = hi
+        best = max(best, hi - lo + 1)
+    return best
+```
+
+## Before you code aloud
+
+1. Brute force complexity → target improvement.
+2. Name pattern and **invariant** (what the window/map represents).
+3. Edge cases: empty, one element, duplicates, negatives, overflow.
+
+More depth: [Big-O](/learn/dsa/big-o-complexity), [hashing](/learn/dsa/hashing), [sliding window](/learn/dsa/sliding-window). Drill: [interview questions](/interview/dsa).
