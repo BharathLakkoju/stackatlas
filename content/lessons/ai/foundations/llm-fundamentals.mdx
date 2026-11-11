@@ -1,0 +1,127 @@
+---
+title: "LLM fundamentals for engineers"
+slug: llm-fundamentals
+kind: lesson
+track: ai
+module: foundations
+order: 1
+difficulty: beginner
+prerequisites: []
+root: true
+tags:
+  - llm
+  - tokens
+  - prompting
+estimatedMinutes: 16
+lastReviewed: "2026-11-01"
+summary: "Tokens, context windows, and sampling knobs — the quantities that drive cost, latency, and whether a prompt fits at all."
+related:
+  - embeddings
+  - langgraph-vs-langchain
+---
+
+## Why this matters
+
+Shipping an LLM feature without token math is how teams blow budgets and miss SLAs. Models read **tokens**, not characters; a 128k context window still costs money and latency for every prefix byte you send. Temperature and top-p change creativity versus determinism — wrong settings make evals flaky.
+
+Fundamentals also cover **system versus user** messages, tool schemas, and when to fine-tune versus RAG versus bigger models.
+
+## Mental model
+
+- **Autoregressive**: model predicts next token; stop sequences end generation.
+- **Context window**: hard cap on prompt + completion length; overflow truncates or errors.
+- **Sampling**: `temperature` spreads probability mass; `top_p` nucleus sampling trims the tail.
+- **Structured output**: JSON schema or tool calls reduce parsing hacks.
+
+Cost ≈ `(input_tokens * price_in) + (output_tokens * price_out)`. Log token usage per request in production.
+
+Latency drivers: model size, batching, speculative decoding (provider-dependent), and output length caps.
+
+Version prompts in git with model name and temperature recorded in metadata. When vendors deprecate models, regression-test golden outputs before flipping the routing flag in your gateway.
+
+Separate system instructions from user content in logs so incident response can redact PII without losing debugging context. Cap output tokens per route to prevent runaway completions from doubling spend during abuse attempts.
+
+## Code
+
+```python
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class TokenEstimate:
+    chars: int
+    approx_tokens: int
+
+
+def rough_token_estimate(text: str) -> TokenEstimate:
+    char_count = len(text)
+    approx = max(1, char_count // 4)
+    return TokenEstimate(chars=char_count, approx_tokens=approx)
+
+
+def sample_greedy_choice(logits: list[float]) -> int:
+    best_index = 0
+    best_value = logits[0]
+    for index in range(1, len(logits)):
+        if logits[index] > best_value:
+            best_value = logits[index]
+            best_index = index
+    return best_index
+
+
+def main() -> None:
+    prompt = "Explain vector databases in two sentences."
+    estimate = rough_token_estimate(prompt)
+    print(f"chars={estimate.chars} approx_tokens={estimate.approx_tokens}")
+    choice = sample_greedy_choice([0.1, 0.7, 0.2])
+    print(f"greedy_index={choice}")
+
+
+if __name__ == "__main__":
+    main()
+```
+
+Use provider tokenizers (tiktoken, Hugging Face) for billing-grade counts. Cap `max_tokens` on completions and stream to the client for perceived speed.
+
+## Common mistakes
+
+- Stuffing entire PDFs into the prompt instead of chunking and retrieving.
+- High temperature during automated JSON extraction.
+- No timeout and retry policy on gateway calls.
+- Comparing models on different prompt versions without versioning prompts in git.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "Rough rule of thumb: English prose token count is closest to which formula?",
+      choices: [
+        "One token per character",
+        "About one token per four characters",
+        "Tokens equal line count",
+        "Tokens equal word count always"
+      ],
+      answer: 1,
+      explanation: "A common heuristic is ~4 characters per token for English; use the provider tokenizer for accuracy."
+    },
+    {
+      prompt: "You need reproducible eval runs. Sampling change that helps most?",
+      choices: [
+        "Raise temperature to 1.5",
+        "Set temperature near 0 for greedy-like output",
+        "Remove max_tokens",
+        "Randomize system prompt each run"
+      ],
+      answer: 1,
+      explanation: "Low temperature reduces randomness so scores are comparable across runs."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- "How do you estimate monthly LLM cost from traffic assumptions?"
+- Follow-up: "When is fine-tuning worth it over prompting?"
+
+Use the [LLM cost tool](/tools/llm-cost), then continue with [Embeddings](/learn/ai/foundations/embeddings) and [LangGraph vs LangChain](/learn/ai/agents/langgraph-vs-langchain).

@@ -1,0 +1,141 @@
+---
+title: "LLM evals and production guardrails"
+slug: evals-guardrails
+kind: lesson
+track: ai
+module: production
+order: 6
+difficulty: advanced
+prerequisites:
+  - rag
+  - tool-using-agents
+tags:
+  - evals
+  - safety
+  - monitoring
+estimatedMinutes: 19
+lastReviewed: "2026-11-01"
+summary: "Golden datasets, automated judges, and runtime filters — measure regressions before users report them in prod."
+related:
+  - rag
+---
+
+## Why this matters
+
+Prompt tweaks and model upgrades silently break [RAG](/learn/ai/rag/rag) faithfulness and [tool-using agents](/learn/ai/agents/tool-using-agents) accuracy. Evals turn quality into metrics: exact match on structured tasks, LLM-as-judge with rubrics, human spot checks on sampled traffic. Guardrails add input/output filters, PII blocklists, refusal policies, and rate limits at the gateway.
+
+Advanced teams run evals in CI on every prompt or retrieval config change and shadow-test new models against production logs (redacted).
+
+## Mental model
+
+Layers:
+
+1. **Offline evals**: fixed dataset, reproducible pipeline, thresholds for merge.
+2. **Online monitors**: thumbs down, escalation rate, tool error ratio, latency SLO.
+3. **Guardrails**: regex/ML classifiers, JSON schema validation, max tokens, blocked topics.
+4. **Incident playbooks**: roll back prompt version, drain feature flag, hotfix retrieval index.
+
+Judge models need their own bias checks; prefer multiple metrics over one headline score.
+
+Store eval datasets beside application code with license notes for third-party snippets. Block prompt-injection patterns at the edge when user text is copied into tool arguments verbatim.
+
+Schedule weekly human review on a random sample of production traces with PII scrubbed. Tie guardrail releases to semver on prompt packs so rollback is a config flip, not a redeploy of unrelated services.
+
+## Code
+
+```python
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class EvalCase:
+    question: str
+    expected_substring: str
+
+
+@dataclass(frozen=True)
+class EvalResult:
+    case_id: int
+    passed: bool
+    answer: str
+
+
+def answer_stub(question: str) -> str:
+    if "refund" in question.lower():
+        return "Refunds are allowed within thirty days."
+    return "I do not know."
+
+
+def faithfulness_check(answer: str, expected: str) -> bool:
+    return expected.lower() in answer.lower()
+
+
+def run_eval(cases: list[EvalCase]) -> list[EvalResult]:
+    results: list[EvalResult] = []
+    for index, case in enumerate(cases):
+        answer = answer_stub(case.question)
+        passed = faithfulness_check(answer, case.expected_substring)
+        results.append(EvalResult(case_id=index, passed=passed, answer=answer))
+    return results
+
+
+def main() -> None:
+    cases = [
+        EvalCase("What is the refund window?", "thirty days"),
+        EvalCase("Shipping policy?", "free"),
+    ]
+    results = run_eval(cases)
+    for row in results:
+        print(f"id={row.case_id} passed={row.passed} answer={row.answer}")
+    pass_rate = sum(1 for row in results if row.passed) / len(results)
+    print(f"pass_rate={pass_rate:.2f}")
+
+
+if __name__ == "__main__":
+    main()
+```
+
+Expand with RAGAS-style context precision and custom rubrics. Pair spend tracking with the [LLM cost tool](/tools/llm-cost).
+
+## Common mistakes
+
+- Eval set copied from prompt examples (overfitting).
+- Single LLM judge with no human calibration.
+- Guardrails only at the UI, not at the API gateway.
+- No versioning for prompts, embeddings model, or chunker config.
+
+## Mini-quiz
+
+<Quiz
+  questions={[
+    {
+      prompt: "You change the reranker model. What should run before full rollout?",
+      choices: [
+        "Delete eval dataset",
+        "Offline eval suite on golden questions with thresholds",
+        "Raise temperature in production",
+        "Disable logging"
+      ],
+      answer: 1,
+      explanation: "Golden-set regression tests catch retrieval quality drops before all users see them."
+    },
+    {
+      prompt: "Tool error rate spikes after deploy. Fastest signal to watch?",
+      choices: [
+        "Git star count",
+        "Online metric: tool failure ratio per request",
+        "Embedding dimension",
+        "CSS bundle size"
+      ],
+      answer: 1,
+      explanation: "Per-request tool failure rates surface agent regressions quickly in dashboards."
+    }
+  ]}
+/>
+
+## Interview angles
+
+- "How do you balance automated judges with human review cost?"
+- Follow-up: "What belongs in a prompt rollback versus model rollback?"
+
+Review [RAG](/learn/ai/rag/rag) metrics and the [AI cheatsheet](/cheatsheets/ai) for guardrail checklists.
